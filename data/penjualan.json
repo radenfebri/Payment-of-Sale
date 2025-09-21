@@ -114,5 +114,34 @@
         "nama_pembeli": "Raden",
         "id": 1758419307,
         "waktu": "2025-09-21 01:48:27"
+    },
+    {
+        "items": [
+            {
+                "id": "1758382403",
+                "nama": "Rinso Box",
+                "harga": 12000,
+                "jenisHarga": "ecer",
+                "qty": 1,
+                "stok": 115
+            },
+            {
+                "id": "1758382403",
+                "nama": "Rinso Box",
+                "harga": 11000,
+                "jenisHarga": "grosir",
+                "qty": 5,
+                "stok": 115
+            }
+        ],
+        "total": 67000,
+        "diskon": 0,
+        "grandTotal": 67000,
+        "bayar": 55000,
+        "kembalian": 0,
+        "hutang": 12000,
+        "nama_pembeli": "TES",
+        "id": 1758433416,
+        "waktu": "2025-09-21 05:43:36"
     }
 ]

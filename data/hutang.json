@@ -1,14 +1,5 @@
 [
     {
-        "id": "H1758387128",
-        "id_penjualan": 1758387128,
-        "nama": "Febri",
-        "jumlah": 1000,
-        "tanggal": "2025-09-20 16:52:08",
-        "status": "belum lunas",
-        "tanggal_bayar": null
-    },
-    {
         "id": "H1758419307",
         "id_penjualan": 1758419307,
         "nama": "Raden",
@@ -17,46 +8,39 @@
         "status": "belum lunas",
         "tanggal_bayar": null,
         "tax": 0,
-        "last_tax_update": "2025-09-21 10:52:24"
+        "last_tax_update": "2025-09-21 10:52:24",
+        "perubahan": {
+            "tanggal": "2025-09-21 12:30:13",
+            "dari": 500001,
+            "ke": 50000,
+            "selisih": -450001,
+            "alasan": "Penyesuaian harga",
+            "tipe": "potongan"
+        },
+        "jumlah_awal": 50000
     },
     {
-        "id": "H1758425505",
-        "id_penjualan": "manual-68cf71a17b751",
-        "nama": "Tes",
-        "jumlah": 35000,
-        "keterangan": "asdas",
-        "tanggal": "2025-09-21 10:31:00",
+        "id": "68cf8d3bce74b",
+        "id_penjualan": "manual-68cf8d3bce750",
+        "nama": "tes",
+        "jumlah": 10000,
+        "jumlah_awal": 10000,
+        "keterangan": "tes",
+        "tanggal": "2025-09-21 12:29:00",
         "status": "belum lunas",
         "tanggal_bayar": null,
         "tipe": "manual",
-        "items": [
-            {
-                "id": "1758382403",
-                "nama": "Rinso Box",
-                "harga": 12000,
-                "jenisHarga": "ecer",
-                "qty": 2,
-                "subtotal": 24000
-            },
-            {
-                "id": "1758382403",
-                "nama": "Rinso Box",
-                "harga": 11000,
-                "jenisHarga": "grosir",
-                "qty": 1,
-                "subtotal": 11000
-            }
-        ]
+        "perubahan": null
     },
     {
-        "id": "68cf76b42dc9c",
-        "id_penjualan": "manual-68cf76b42dca1",
-        "nama": "asdas",
-        "jumlah": 123123,
-        "keterangan": "asd",
-        "tanggal": "2025-09-21 10:53:00",
+        "id": "H1758433416",
+        "id_penjualan": 1758433416,
+        "nama": "TES",
+        "jumlah": 12000,
+        "tanggal": "2025-09-21 05:43:36",
         "status": "belum lunas",
         "tanggal_bayar": null,
-        "tipe": "manual"
+        "perubahan": null,
+        "jumlah_awal": 12000
     }
 ]
