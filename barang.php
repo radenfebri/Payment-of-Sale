@@ -117,11 +117,17 @@ if (isset($_GET['action'])) {
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label for="kodeProduk" class="block text-sm font-medium text-gray-700">Kode Produk</label>
-            <input id="kodeProduk" placeholder="Kode / Barcode" class="border rounded-md p-2 w-full bg-gray-100 text-gray-500 cursor-not-allowed" readonly />
+            <div class="flex gap-2 mt-1">
+              <input id="kodeProduk" placeholder="Scan barcode atau ketik kode"
+                class="border rounded-md p-2 w-full focus:ring-2 focus:ring-blue-400 focus:outline-none" />
+              <button type="button" onclick="generateKodeProduk()"
+                class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-500 transition">Generate</button>
+            </div>
           </div>
           <div>
             <label for="nama" class="block text-sm font-medium text-gray-700">Nama Barang</label>
-            <input id="nama" placeholder="Nama Barang" class="border rounded-md p-2 w-full" required />
+            <input id="nama" placeholder="Masukkan Nama Barang"
+              class="border rounded-md p-2 w-full focus:ring-2 focus:ring-blue-400 focus:outline-none" required />
           </div>
         </div>
 
@@ -129,40 +135,51 @@ if (isset($_GET['action'])) {
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label for="stok" class="block text-sm font-medium text-gray-700">Stok</label>
-            <input id="stok" type="number" placeholder="Jumlah Barang" class="border rounded-md p-2 w-full" required />
+            <input id="stok" type="number" placeholder="Jumlah Barang"
+              class="border rounded-md p-2 w-full focus:ring-2 focus:ring-blue-400 focus:outline-none" required />
           </div>
           <div>
             <label for="stokMin" class="block text-sm font-medium text-gray-700">Stok Minimal</label>
-            <input id="stokMin" type="number" placeholder="Jumlah Minimal" class="border rounded-md p-2 w-full" />
+            <input id="stokMin" type="number" placeholder="Jumlah Minimal"
+              class="border rounded-md p-2 w-full focus:ring-2 focus:ring-blue-400 focus:outline-none" />
           </div>
         </div>
 
-        <!-- Dropdown Satuan -->
-        <div class="flex flex-col md:flex-row items-center gap-4">
+        <!-- Satuan -->
+        <div class="flex gap-2 mt-1">
           <div class="flex-1">
             <label for="satuan" class="block text-sm font-medium text-gray-700">Satuan</label>
-            <select id="satuan" class="border rounded-md p-2 w-full bg-gray-50 focus:ring-2 focus:ring-blue-600">
+            <select id="satuan" class="border rounded-md p-2 w-full bg-gray-50 focus:ring-2 focus:ring-blue-400">
               <option value="" disabled selected>Pilih Satuan</option>
             </select>
           </div>
-          <button type="button" onclick="tambahSatuan()" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-500 transition duration-300">+</button>
+          <div class="flex items-end">
+            <button type="button" onclick="tambahSatuan()"
+              class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-500 transition">+</button>
+          </div>
         </div>
 
         <!-- Harga -->
         <div>
-          <h3 class="font-semibold text-lg text-gray-700 mt-4">Harga</h3>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
-            <input id="hargaModal" type="number" placeholder="Harga Modal" class="border rounded-md p-2 w-full" required />
-            <input id="hargaEcer" type="number" placeholder="Harga Ecer" class="border rounded-md p-2 w-full" required />
-            <input id="hargaGrosir" type="number" placeholder="Harga Jual Ulang" class="border rounded-md p-2 w-full" required />
+          <h3 class="font-semibold text-lg text-gray-700 mb-2">Harga</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <input id="hargaModal" type="number" placeholder="Harga Modal"
+              class="border rounded-md p-2 w-full focus:ring-2 focus:ring-blue-400 focus:outline-none" />
+            <input id="hargaEcer" type="number" placeholder="Harga Ecer"
+              class="border rounded-md p-2 w-full focus:ring-2 focus:ring-blue-400 focus:outline-none" />
+            <input id="hargaGrosir" type="number" placeholder="Harga Jual Ulang"
+              class="border rounded-md p-2 w-full focus:ring-2 focus:ring-blue-400 focus:outline-none" />
           </div>
         </div>
 
-        <!-- Tombol Simpan dan Reset -->
-        <div class="mt-6 flex gap-4 flex-col md:flex-row">
-          <button type="submit" class="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-500 transition duration-300 w-full md:w-auto">Simpan</button>
-          <button type="button" id="reset" class="bg-gray-500 text-white px-6 py-3 rounded-md hover:bg-gray-400 transition duration-300 w-full md:w-auto">Reset</button>
+        <!-- Tombol Simpan & Reset -->
+        <div class="flex flex-col md:flex-row gap-4 mt-4">
+          <button type="submit"
+            class="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-500 transition w-full md:w-auto">Simpan</button>
+          <button type="button" id="reset"
+            class="bg-gray-500 text-white px-6 py-3 rounded-md hover:bg-gray-400 transition w-full md:w-auto">Reset</button>
         </div>
+
       </form>
     </div>
 
@@ -543,6 +560,14 @@ if (isset($_GET['action'])) {
         document.getElementById("hargaModal").placeholder = "Harga Modal";
         document.getElementById("hargaEcer").placeholder = "Harga Ecer";
         document.getElementById("hargaGrosir").placeholder = "Harga Jual Ulang";
+      }
+    });
+
+
+    // Tangkap input dari scanner (Enter key)
+    document.getElementById("kodeProduk").addEventListener("keypress", function(e) {
+      if (e.key === "Enter") {
+        document.getElementById("nama").focus(); // Pindah ke input berikutnya
       }
     });
   </script>
