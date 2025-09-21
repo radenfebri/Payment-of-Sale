@@ -341,7 +341,7 @@ if (isset($_GET['action'])) {
             overflow-y: auto;
             position: relative;
         }
-        
+
         .sticky-header thead th {
             position: sticky;
             top: 0;
@@ -365,81 +365,79 @@ if (isset($_GET['action'])) {
 
     <!-- Main Content -->
     <main class="flex-1 p-6">
-        <div class="max-w-7xl mx-auto">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-800">Manajemen Stok Barang</h2>
-                <div class="flex space-x-2">
-                    <button onclick="exportData()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center">
-                        <i class="fas fa-file-export mr-2"></i> Export
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-gray-800">Manajemen Stok Barang</h2>
+            <div class="flex space-x-2">
+                <button onclick="exportData()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center">
+                    <i class="fas fa-file-export mr-2"></i> Export
+                </button>
+                <button onclick="openTambahStokModal()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center">
+                    <i class="fas fa-plus mr-2"></i> Tambah Stok
+                </button>
+                <button onclick="openKurangiStokModal()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg flex items-center">
+                    <i class="fas fa-minus mr-2"></i> Kurangi Stok
+                </button>
+            </div>
+        </div>
+
+        <!-- Filter Section -->
+        <div class="bg-white p-4 rounded-lg shadow mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Cari Barang</label>
+                    <input type="text" id="searchInput" placeholder="Nama atau kode barang" class="w-full p-2 border border-gray-300 rounded-md">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Status Stok</label>
+                    <select id="statusFilter" class="w-full p-2 border border-gray-300 rounded-md">
+                        <option value="all">Semua</option>
+                        <option value="habis">Stok Habis</option>
+                        <option value="hampir-habis">Hampir Habis</option>
+                        <option value="cukup">Stok Cukup</option>
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button onclick="applyFilters()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md w-full">
+                        Terapkan Filter
                     </button>
-                    <button onclick="openTambahStokModal()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center">
-                        <i class="fas fa-plus mr-2"></i> Tambah Stok
-                    </button>
-                    <button onclick="openKurangiStokModal()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg flex items-center">
-                        <i class="fas fa-minus mr-2"></i> Kurangi Stok
+                </div>
+                <div class="flex items-end">
+                    <button onclick="loadBarangData()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md w-full flex items-center justify-center">
+                        <i class="fas fa-sync-alt mr-2"></i> Refresh
                     </button>
                 </div>
             </div>
+        </div>
 
-            <!-- Filter Section -->
-            <div class="bg-white p-4 rounded-lg shadow mb-6">
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Cari Barang</label>
-                        <input type="text" id="searchInput" placeholder="Nama atau kode barang" class="w-full p-2 border border-gray-300 rounded-md">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Status Stok</label>
-                        <select id="statusFilter" class="w-full p-2 border border-gray-300 rounded-md">
-                            <option value="all">Semua</option>
-                            <option value="habis">Stok Habis</option>
-                            <option value="hampir-habis">Hampir Habis</option>
-                            <option value="cukup">Stok Cukup</option>
-                        </select>
-                    </div>
-                    <div class="flex items-end">
-                        <button onclick="applyFilters()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md w-full">
-                            Terapkan Filter
-                        </button>
-                    </div>
-                    <div class="flex items-end">
-                        <button onclick="loadBarangData()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md w-full flex items-center justify-center">
-                            <i class="fas fa-sync-alt mr-2"></i> Refresh
-                        </button>
-                    </div>
-                </div>
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" class="loading-spinner"></div>
+
+        <!-- Stok Table - DIPERBAIKI dengan container untuk sticky header -->
+        <div id="stokTableContainer" class="bg-white rounded-lg shadow overflow-hidden hidden">
+            <div class="table-container"> <!-- Container dengan max-height dan overflow -->
+                <table class="w-full text-left border border-gray-300 sticky-header">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode Barang</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Barang</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stok Saat Ini</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stok Minimum</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Satuan</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stokTableBody" class="bg-white divide-y divide-gray-200">
+                        <!-- Data akan diisi oleh JavaScript -->
+                    </tbody>
+                </table>
             </div>
+        </div>
 
-            <!-- Loading Indicator -->
-            <div id="loadingIndicator" class="loading-spinner"></div>
-
-            <!-- Stok Table - DIPERBAIKI dengan container untuk sticky header -->
-            <div id="stokTableContainer" class="bg-white rounded-lg shadow overflow-hidden hidden">
-                <div class="table-container"> <!-- Container dengan max-height dan overflow -->
-                    <table class="w-full text-left border border-gray-300 sticky-header">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode Barang</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Barang</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stok Saat Ini</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stok Minimum</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Satuan</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody id="stokTableBody" class="bg-white divide-y divide-gray-200">
-                            <!-- Data akan diisi oleh JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Error Message -->
-            <div id="errorMessage" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-4 hidden">
-                <strong class="font-bold">Error!</strong>
-                <span id="errorText"></span>
-            </div>
+        <!-- Error Message -->
+        <div id="errorMessage" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-4 hidden">
+            <strong class="font-bold">Error!</strong>
+            <span id="errorText"></span>
         </div>
     </main>
 

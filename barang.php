@@ -118,17 +118,47 @@ if (isset($_GET['action'])) {
       transform: scale(0.9);
     }
 
-    /* Sticky header untuk tabel */
+    /* PERBAIKAN: Tabel itu sendiri */
+    table.w-full {
+      min-height: 300px;
+    }
+
+    /* PERBAIKAN: Header yang sticky */
     .sticky-header thead tr {
       position: sticky;
       top: 0;
       z-index: 10;
-      background-color: #f9fafb;
+      background-color: #f8fafc;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    /* PERBAIKAN: Baris tabel dengan tinggi yang lebih baik */
+    .sticky-header tbody tr td {
+      padding-top: 0.75rem;
+      padding-bottom: 0.75rem;
+      vertical-align: middle;
     }
 
     /* Efek hover untuk baris tabel */
     .hover-row:hover {
       background-color: #f3f4f6 !important;
+    }
+
+    table.w-full {
+      width: 100%;
+      table-layout: auto;
+    }
+
+    /* Responsif untuk layar kecil */
+    @media (max-width: 768px) {
+      .overflow-y-auto {
+        max-height: calc(100vh - 300px);
+      }
+
+      /* Tambahkan scroll horizontal untuk tabel pada layar kecil */
+      .table-container {
+        overflow-x: auto;
+      }
     }
   </style>
 </head>
@@ -146,9 +176,9 @@ if (isset($_GET['action'])) {
       </button>
     </div>
 
-    <!-- Table and Search -->
-    <div class="bg-white p-6 rounded-lg shadow-md mb-6 overflow-x-auto">
-      <!-- Pencarian dan Filter -->
+    <!-- Kembalikan ke struktur awal dengan sedikit modifikasi -->
+    <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+      <!-- Pencarian dan Filter (tetap sama) -->
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
         <div class="flex flex-col md:flex-row gap-3 w-full md:w-auto">
           <input id="search" type="text" class="border rounded-md p-2 w-full md:w-64" placeholder="Cari Barang..." oninput="filterTable()">
@@ -161,23 +191,25 @@ if (isset($_GET['action'])) {
         <span id="stokWarning" class="text-sm text-red-500"></span>
       </div>
 
-      <!-- Tabel Barang -->
-      <div class="overflow-y-auto max-h-96">
-        <table class="w-full text-left border border-gray-300 sticky-header">
-          <thead>
-            <tr class="bg-gray-200">
-              <th class="p-3 border">Kode</th>
-              <th class="p-3 border">Nama</th>
-              <th class="p-3 border">Stok</th>
-              <th class="p-3 border">Satuan</th>
-              <th class="p-3 border">Harga Modal</th>
-              <th class="p-3 border">Harga Ecer</th>
-              <th class="p-3 border">Harga Jual Ulang</th>
-              <th class="p-3 border">Aksi</th>
-            </tr>
-          </thead>
-          <tbody id="tabelBarang"></tbody>
-        </table>
+      <!-- Tabel Barang - Header Fixed -->
+      <div class="border border-gray-200 rounded-lg overflow-hidden">
+        <div class="overflow-y-auto max-h-96 relative">
+          <table class="w-full text-left">
+            <thead class="sticky top-0 z-10">
+              <tr class="bg-gray-100">
+                <th class="p-3 border-b font-semibold bg-gray-100">Kode</th>
+                <th class="p-3 border-b font-semibold bg-gray-100">Nama</th>
+                <th class="p-3 border-b font-semibold bg-gray-100">Stok</th>
+                <th class="p-3 border-b font-semibold bg-gray-100">Satuan</th>
+                <th class="p-3 border-b font-semibold bg-gray-100">Harga Modal</th>
+                <th class="p-3 border-b font-semibold bg-gray-100">Harga Ecer</th>
+                <th class="p-3 border-b font-semibold bg-gray-100">Harga Jual Ulang</th>
+                <th class="p-3 border-b font-semibold bg-gray-100">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="tabelBarang" class="divide-y divide-gray-200"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -388,6 +420,14 @@ if (isset($_GET['action'])) {
         return;
       }
 
+      // Hitung tinggi maksimum berdasarkan viewport
+      const tableContainer = document.querySelector('.overflow-y-auto');
+      const headerHeight = document.querySelector('main').offsetTop;
+      const availableHeight = window.innerHeight - headerHeight - 200; // 200px untuk padding dan elemen lain
+
+      // Set tinggi maksimum untuk container tabel
+      tableContainer.style.maxHeight = `${Math.max(300, availableHeight)}px`;
+
       // Menampilkan barang
       data.forEach(b => {
         // Cari harga berdasarkan satuan
@@ -402,27 +442,55 @@ if (isset($_GET['action'])) {
         const isStokMinimum = b.stokMin > 0 && b.stok <= b.stokMin;
 
         tbody.innerHTML += `
-          <tr class="border-b hover-row ${isStokMinimum ? 'bg-yellow-100' : ''}">
-            <td class="p-3 border">${b.kodeProduk || '-'}</td>
-            <td class="p-3 border font-medium">${b.nama || '-'}</td>
-            <td class="p-3 border ${isStokMinimum ? 'text-red-600 font-bold' : ''}">${b.stok || 0}</td>
-            <td class="p-3 border">${b.satuan || '-'}</td>
-            <td class="p-3 border">Rp ${parseInt(harga.hargaModal || 0).toLocaleString('id-ID')}</td>
-            <td class="p-3 border">Rp ${parseInt(harga.hargaEcer || 0).toLocaleString('id-ID')}</td>
-            <td class="p-3 border">Rp ${parseInt(harga.hargaGrosir || 0).toLocaleString('id-ID')}</td>
-            <td class="p-3 border">
-              <div class="flex flex-col sm:flex-row gap-2">
-                <button onclick="editBarang(${b.id})" class="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-400 text-sm flex items-center justify-center">
-                  <i class="fas fa-edit mr-1"></i> Edit
-                </button>
-                <button onclick='hapusBarang(${b.id})' class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-500 text-sm flex items-center justify-center">
-                  <i class="fas fa-trash mr-1"></i> Hapus
-                </button>
-              </div>
-            </td>
-          </tr>
-        `;
+      <tr class="border-b hover-row ${isStokMinimum ? 'bg-yellow-100' : ''}">
+        <td class="p-3 border">${b.kodeProduk || '-'}</td>
+        <td class="p-3 border font-medium">${b.nama || '-'}</td>
+        <td class="p-3 border ${isStokMinimum ? 'text-red-600 font-bold' : ''}">${b.stok || 0}</td>
+        <td class="p-3 border">${b.satuan || '-'}</td>
+        <td class="p-3 border">Rp ${parseInt(harga.hargaModal || 0).toLocaleString('id-ID')}</td>
+        <td class="p-3 border">Rp ${parseInt(harga.hargaEcer || 0).toLocaleString('id-ID')}</td>
+        <td class="p-3 border">Rp ${parseInt(harga.hargaGrosir || 0).toLocaleString('id-ID')}</td>
+        <td class="p-3 border">
+          <div class="flex flex-col sm:flex-row gap-2">
+            <button onclick="editBarang(${b.id})" class="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-400 text-sm flex items-center justify-center">
+              <i class="fas fa-edit mr-1"></i> Edit
+            </button>
+            <button onclick='hapusBarang(${b.id})' class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-500 text-sm flex items-center justify-center">
+              <i class="fas fa-trash mr-1"></i> Hapus
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
       });
+    }
+
+    // Tambahkan event listener untuk menangani resize window
+    window.addEventListener('resize', function() {
+      // Panggil ulang displayBarang untuk menyesuaikan tinggi tabel
+      displayBarang(filteredBarang);
+    });
+
+    // Update fungsi loadBarang untuk memanggil displayBarang dengan benar
+    async function loadBarang() {
+      try {
+        let res = await fetch("?action=list");
+        if (!res.ok) throw new Error("Gagal mengambil data barang");
+
+        let data = await res.json();
+
+        // Balik urutan supaya data terbaru muncul di atas
+        allBarang = data.reverse();
+
+        filteredBarang = [...allBarang];
+        displayBarang(filteredBarang);
+
+        // Tampilkan peringatan stok minimal
+        checkStokMinimum();
+      } catch (error) {
+        console.error("Error loading barang:", error);
+        alert("Gagal memuat data barang: " + error.message);
+      }
     }
 
     // Filter tabel berdasarkan pencarian dan satuan

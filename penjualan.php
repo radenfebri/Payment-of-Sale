@@ -93,6 +93,43 @@ if (isset($_GET['action'])) {
     <title>Point of Sale - POS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* CSS untuk tabel sticky */
+        .table-container {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+            margin-bottom: 1rem;
+        }
+
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            background-color: #f3f4f6;
+            z-index: 10;
+        }
+
+        .sticky-header th {
+            border-bottom: 2px solid #d1d5db;
+        }
+
+        /* Memastikan tabel tetap rapi */
+        #keranjangTable {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        #keranjangTable th,
+        #keranjangTable td {
+            padding: 0.5rem;
+            border: 1px solid #e5e7eb;
+        }
+
+        /* Menghilangkan border pada container kosong */
+        #keranjangKosong {
+            border: none;
+        }
+    </style>
 </head>
 
 <body class="bg-gray-100 min-h-screen flex">
@@ -128,24 +165,26 @@ if (isset($_GET['action'])) {
                 <div class="bg-white p-6 rounded-lg shadow-lg">
                     <h3 class="text-lg font-semibold mb-4">Keranjang Belanja</h3>
 
-                    <table class="w-full text-left border border-gray-300 mb-4">
-                        <thead>
-                            <tr class="bg-gray-200">
-                                <th class="p-2 border">Barang</th>
-                                <th class="p-2 border">Harga</th>
-                                <th class="p-2 border">Qty</th>
-                                <th class="p-2 border">Jenis</th>
-                                <th class="p-2 border">Subtotal</th>
-                                <th class="p-2 border">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody id="keranjang">
-                            <!-- Item keranjang akan ditampilkan di sini -->
-                            <tr id="keranjangKosong">
-                                <td colspan="6" class="p-3 text-center">Keranjang kosong</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <div class="table-container">
+                        <table id="keranjangTable" class="w-full text-left">
+                            <thead>
+                                <tr class="sticky-header">
+                                    <th class="p-2">Barang</th>
+                                    <th class="p-2">Harga</th>
+                                    <th class="p-2">Qty</th>
+                                    <th class="p-2">Jenis</th>
+                                    <th class="p-2">Subtotal</th>
+                                    <th class="p-2">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="keranjang">
+                                <!-- Item keranjang akan ditampilkan di sini -->
+                                <tr id="keranjangKosong">
+                                    <td colspan="6" class="p-3 text-center">Keranjang kosong</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
 
                     <!-- Input Promo -->
                     <div class="mb-4">
@@ -382,9 +421,9 @@ if (isset($_GET['action'])) {
 
                 html += `
           <tr class="border-b hover:bg-gray-50 transition-colors duration-200">
-            <td class="p-3">${item.nama}</td>
-            <td class="p-3">Rp ${item.harga.toLocaleString('id-ID')}</td>
-            <td class="p-3">
+            <td class="p-2">${item.nama}</td>
+            <td class="p-2">Rp ${item.harga.toLocaleString('id-ID')}</td>
+            <td class="p-2">
               <div class="flex items-center">
                 <button onclick="ubahQty(${index}, -1)" class="bg-gray-200 px-2 py-1 rounded-l hover:bg-gray-300 transition-colors duration-200">
                   <i class="fas fa-minus text-xs"></i>
@@ -396,11 +435,11 @@ if (isset($_GET['action'])) {
                 </button>
               </div>
             </td>
-            <td class="p-3">
+            <td class="p-2">
               <span class="text-xs px-2 py-1 rounded ${jenisClass}">${item.jenisHarga}</span>
             </td>
-            <td class="p-3 font-medium">Rp ${subtotal.toLocaleString('id-ID')}</td>
-            <td class="p-3">
+            <td class="p-2 font-medium">Rp ${subtotal.toLocaleString('id-ID')}</td>
+            <td class="p-2">
               <button onclick="hapusDariKeranjang(${index})" class="bg-red-100 text-red-600 px-2 py-1 rounded text-sm hover:bg-red-200 transition-colors duration-200">
                 <i class="fas fa-trash text-xs"></i>
               </button>

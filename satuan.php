@@ -1,6 +1,12 @@
 <?php
 // satuan.php
-$satuanFile = __DIR__ . "/data/satuan.json";
+$dataDir = __DIR__ . "/data";
+$satuanFile = $dataDir . "/satuan.json";
+
+// Pastikan direktori data ada
+if (!file_exists($dataDir)) {
+    mkdir($dataDir, 0777, true);
+}
 
 // Pastikan file JSON ada
 if (!file_exists($satuanFile)) {
@@ -8,7 +14,10 @@ if (!file_exists($satuanFile)) {
 }
 
 if (isset($_GET['action'])) {
-    $satuan = json_decode(file_get_contents($satuanFile), true) ?? [];
+    // Baca data satuan
+    $satuanData = file_get_contents($satuanFile);
+    $satuan = json_decode($satuanData, true) ?? [];
+    
     $input = json_decode(file_get_contents("php://input"), true);
 
     switch ($_GET['action']) {
@@ -92,6 +101,34 @@ if (isset($_GET['action'])) {
     <title>Manajemen Satuan - POS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .sticky-thead th {
+            position: sticky;
+            top: 0;
+            background: #f3f4f6;
+            z-index: 10;
+        }
+        
+        /* Animasi untuk modal */
+        .modal-transition {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        
+        .modal-enter {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        
+        .modal-enter-active {
+            opacity: 1;
+            transform: scale(1);
+        }
+    </style>
 </head>
 
 <body class="bg-gray-100 min-h-screen flex">
@@ -107,9 +144,10 @@ if (isset($_GET['action'])) {
             <form id="formSatuan" class="flex gap-4">
                 <div class="flex-1">
                     <input type="text" name="nama" placeholder="Nama satuan (contoh: pcs, box, kg)"
-                        class="w-full border rounded-md p-2" required>
+                        class="w-full border rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                        required>
                 </div>
-                <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-500">
+                <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-500 transition-colors">
                     <i class="fas fa-plus mr-1"></i> Tambah
                 </button>
             </form>
@@ -118,13 +156,13 @@ if (isset($_GET['action'])) {
         <!-- Daftar Satuan -->
         <div class="bg-white p-6 rounded-lg shadow-lg">
             <h3 class="text-lg font-semibold mb-4">Daftar Satuan</h3>
-            <div class="overflow-x-auto">
+            <div class="table-container">
                 <table class="w-full text-left border-collapse">
                     <thead>
-                        <tr class="bg-gray-100">
-                            <th class="p-3 border-b">No</th>
-                            <th class="p-3 border-b">Nama Satuan</th>
-                            <th class="p-3 border-b">Aksi</th>
+                        <tr class="bg-gray-100 sticky-thead">
+                            <th class="p-3 border-b font-semibold">No</th>
+                            <th class="p-3 border-b font-semibold">Nama Satuan</th>
+                            <th class="p-3 border-b font-semibold text-center">Aksi</th>
                         </tr>
                     </thead>
                     <tbody id="daftarSatuan">
@@ -139,21 +177,30 @@ if (isset($_GET['action'])) {
         </div>
 
         <!-- Modal Edit Satuan -->
-        <div id="modalEditSatuan" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center hidden z-50">
+        <div id="modalEditSatuan" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center hidden z-50 modal-transition modal-enter">
             <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
                 <div class="p-6">
-                    <h3 class="text-xl font-semibold mb-4">Edit Satuan</h3>
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-semibold">Edit Satuan</h3>
+                        <button onclick="tutupModalEditSatuan()" class="text-gray-500 hover:text-gray-700">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
                     <form id="formEditSatuan">
                         <input type="hidden" id="editId" name="id">
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-gray-700 mb-1">Nama Satuan</label>
-                            <input type="text" id="editNama" name="nama" class="w-full border rounded-md p-2" required>
+                            <input type="text" id="editNama" name="nama" 
+                                class="w-full border rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" 
+                                required>
                         </div>
                         <div class="flex justify-end space-x-2">
-                            <button type="button" onclick="tutupModalEditSatuan()" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400">
+                            <button type="button" onclick="tutupModalEditSatuan()" 
+                                class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 transition-colors">
                                 Batal
                             </button>
-                            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-500">
+                            <button type="submit" 
+                                class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-500 transition-colors">
                                 Simpan Perubahan
                             </button>
                         </div>
@@ -167,13 +214,20 @@ if (isset($_GET['action'])) {
         // Muat data satuan
         async function muatDaftarSatuan() {
             try {
+                // console.log('Memuat data satuan...');
                 const response = await fetch('satuan.php?action=get_satuan');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
                 const satuanData = await response.json();
+                // console.log('Data diterima:', satuanData);
                 tampilkanDaftarSatuan(satuanData);
             } catch (error) {
                 console.error('Error:', error);
                 document.getElementById('daftarSatuan').innerHTML = `
-                    <tr><td colspan="3" class="p-4 text-center text-red-500">Gagal memuat data satuan</td></tr>
+                    <tr><td colspan="3" class="p-4 text-center text-red-500">Gagal memuat data satuan: ${error.message}</td></tr>
                 `;
             }
         }
@@ -191,18 +245,23 @@ if (isset($_GET['action'])) {
 
             let html = '';
             satuan.forEach((item, index) => {
+                // Escape karakter khusus untuk JavaScript
+                const escapedNama = item.nama.replace(/'/g, "\\'").replace(/"/g, '\\"');
+                
                 html += `
-                    <tr class="border-b hover:bg-gray-50">
+                    <tr class="border-b hover:bg-gray-50 transition-colors">
                         <td class="p-3">${index + 1}</td>
                         <td class="p-3 font-medium">${item.nama}</td>
                         <td class="p-3">
-                            <div class="flex space-x-2">
-                                <button onclick="bukaModalEditSatuan(${item.id}, '${item.nama}')" 
-                                        class="text-blue-500 hover:text-blue-700" title="Edit">
+                            <div class="flex justify-center space-x-2">
+                                <button onclick="bukaModalEditSatuan(${item.id}, '${escapedNama}')" 
+                                        class="text-blue-500 hover:text-blue-700 px-3 py-1 rounded hover:bg-blue-50 transition-colors" 
+                                        title="Edit">
                                     <i class="fas fa-edit"></i>
                                 </button>
                                 <button onclick="hapusSatuan(${item.id})" 
-                                        class="text-red-500 hover:text-red-700" title="Hapus">
+                                        class="text-red-500 hover:text-red-700 px-3 py-1 rounded hover:bg-red-50 transition-colors" 
+                                        title="Hapus">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -251,11 +310,20 @@ if (isset($_GET['action'])) {
         function bukaModalEditSatuan(id, nama) {
             document.getElementById('editId').value = id;
             document.getElementById('editNama').value = nama;
-            document.getElementById('modalEditSatuan').classList.remove('hidden');
+            
+            const modal = document.getElementById('modalEditSatuan');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('modal-enter');
+            }, 10);
         }
 
         function tutupModalEditSatuan() {
-            document.getElementById('modalEditSatuan').classList.add('hidden');
+            const modal = document.getElementById('modalEditSatuan');
+            modal.classList.add('modal-enter');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
         }
 
         // Form edit satuan
