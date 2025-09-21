@@ -1,0 +1,118 @@
+[
+    {
+        "items": [
+            {
+                "id": "1758382403",
+                "nama": "Rinso Box",
+                "harga": 12000,
+                "jenisHarga": "ecer",
+                "qty": 3,
+                "stok": 10
+            },
+            {
+                "id": "1758382403",
+                "nama": "Rinso Box",
+                "harga": 11000,
+                "jenisHarga": "grosir",
+                "qty": 3,
+                "stok": 10
+            }
+        ],
+        "total": 69000,
+        "diskon": 5000,
+        "grandTotal": 64000,
+        "bayar": 64000,
+        "kembalian": 0,
+        "hutang": 0,
+        "nama_pembeli": "Pelanggan",
+        "id": 1758387052,
+        "waktu": "2025-09-20 16:50:52"
+    },
+    {
+        "items": [
+            {
+                "id": "1758382503",
+                "nama": "Rinso Pcs",
+                "harga": 1500,
+                "jenisHarga": "ecer",
+                "qty": 3,
+                "stok": 20
+            },
+            {
+                "id": "1758382503",
+                "nama": "Rinso Pcs",
+                "harga": 1300,
+                "jenisHarga": "grosir",
+                "qty": 5,
+                "stok": 20
+            }
+        ],
+        "total": 11000,
+        "diskon": 0,
+        "grandTotal": 11000,
+        "bayar": 10000,
+        "kembalian": 0,
+        "hutang": 1000,
+        "nama_pembeli": "Pelanggan",
+        "id": 1758387128,
+        "waktu": "2025-09-20 16:52:08"
+    },
+    {
+        "items": [
+            {
+                "id": "1758382403",
+                "nama": "Rinso Box",
+                "harga": 12000,
+                "jenisHarga": "ecer",
+                "qty": 1,
+                "stok": 4
+            },
+            {
+                "id": "1758382503",
+                "nama": "Rinso Pcs",
+                "harga": 1300,
+                "jenisHarga": "grosir",
+                "qty": 1,
+                "stok": 12
+            },
+            {
+                "id": "1758382503",
+                "nama": "Rinso Pcs",
+                "harga": 1500,
+                "jenisHarga": "ecer",
+                "qty": 4,
+                "stok": 12
+            }
+        ],
+        "total": 19300,
+        "diskon": 0,
+        "grandTotal": 19300,
+        "bayar": 120000,
+        "kembalian": 100700,
+        "hutang": 0,
+        "nama_pembeli": "narmi",
+        "id": 1758387776,
+        "waktu": "2025-09-20 17:02:56"
+    },
+    {
+        "items": [
+            {
+                "id": "1758382403",
+                "nama": "Rinso Box",
+                "harga": 11000,
+                "jenisHarga": "grosir",
+                "qty": 5,
+                "stok": 120
+            }
+        ],
+        "total": 55000,
+        "diskon": 0,
+        "grandTotal": 55000,
+        "bayar": 50000,
+        "kembalian": 0,
+        "hutang": 5000,
+        "nama_pembeli": "Raden",
+        "id": 1758419307,
+        "waktu": "2025-09-21 01:48:27"
+    }
+]

@@ -1,0 +1,79 @@
+[
+    {
+        "id_barang": "1758382503",
+        "kode_produk": "TMY458579",
+        "nama_barang": "Rinso Pcs",
+        "jumlah": 12,
+        "jenis": "penambahan",
+        "keterangan": "tes tambah",
+        "waktu": "2025-09-21 00:38:25",
+        "stok_sebelum": 20,
+        "stok_sesudah": 32
+    },
+    {
+        "id_barang": "1758384750",
+        "kode_produk": "TMY709458",
+        "nama_barang": "Rinso Bijian",
+        "jumlah": 10,
+        "jenis": "pengurangan",
+        "keterangan": "kelebihan",
+        "waktu": "2025-09-21 00:55:39",
+        "stok_sebelum": 130,
+        "stok_sesudah": 120
+    },
+    {
+        "id_barang": "1758384750",
+        "kode_produk": "TMY709458",
+        "nama_barang": "Rinso Bijian",
+        "jumlah": 50,
+        "jenis": "pengurangan",
+        "keterangan": "agar tidak banyak",
+        "waktu": "2025-09-21 00:55:59",
+        "stok_sebelum": 120,
+        "stok_sesudah": 70
+    },
+    {
+        "id_barang": "1758384750",
+        "kode_produk": "TMY709458",
+        "nama_barang": "Rinso Bijian",
+        "jumlah": 1,
+        "jenis": "penambahan",
+        "keterangan": "Update stok manual",
+        "waktu": "2025-09-21 00:56:21",
+        "stok_sebelum": 70,
+        "stok_sesudah": 71
+    },
+    {
+        "id_barang": "1758384750",
+        "kode_produk": "TMY709458",
+        "nama_barang": "Rinso Bijian",
+        "jumlah": 59,
+        "jenis": "pengurangan",
+        "keterangan": "Update stok manual",
+        "waktu": "2025-09-21 00:57:11",
+        "stok_sebelum": 71,
+        "stok_sesudah": 12
+    },
+    {
+        "id_barang": "1758384750",
+        "kode_produk": "TMY709458",
+        "nama_barang": "Rinso Bijian",
+        "jumlah": 7,
+        "jenis": "pengurangan",
+        "keterangan": "Update stok manual",
+        "waktu": "2025-09-21 00:57:16",
+        "stok_sebelum": 12,
+        "stok_sesudah": 5
+    },
+    {
+        "id_barang": "1758384750",
+        "kode_produk": "TMY709458",
+        "nama_barang": "Rinso Bijian",
+        "jumlah": 65,
+        "jenis": "penambahan",
+        "keterangan": "Update stok manual",
+        "waktu": "2025-09-21 00:57:30",
+        "stok_sebelum": 5,
+        "stok_sesudah": 70
+    }
+]

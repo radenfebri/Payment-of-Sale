@@ -1,0 +1,50 @@
+[
+    {
+        "id": "1758382403",
+        "kodeProduk": "TMY344985",
+        "nama": "Rinso Box",
+        "stok": 115,
+        "stokMin": 10,
+        "satuan": "box",
+        "satuanHarga": [
+            {
+                "satuan": "box",
+                "hargaModal": 10000,
+                "hargaEcer": 12000,
+                "hargaGrosir": 11000
+            }
+        ]
+    },
+    {
+        "id": "1758382503",
+        "kodeProduk": "TMY458579",
+        "nama": "Rinso Pcs",
+        "stok": 32,
+        "stokMin": 10,
+        "satuan": "pcs",
+        "satuanHarga": [
+            {
+                "satuan": "pcs",
+                "hargaModal": 1000,
+                "hargaEcer": 1500,
+                "hargaGrosir": 1300
+            }
+        ]
+    },
+    {
+        "id": "1758384750",
+        "kodeProduk": "TMY709458",
+        "nama": "Rinso Bijian",
+        "stok": 70,
+        "stokMin": 12,
+        "satuan": "bijian",
+        "satuanHarga": [
+            {
+                "satuan": "bijian",
+                "hargaModal": 1212,
+                "hargaEcer": 3000,
+                "hargaGrosir": 1500
+            }
+        ]
+    }
+]
