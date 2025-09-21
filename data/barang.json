@@ -46,5 +46,197 @@
                 "hargaGrosir": 1500
             }
         ]
+    },
+    {
+        "id": "1758441969",
+        "kodeProduk": "TMY939826",
+        "nama": "Kopiko",
+        "stok": 12,
+        "stokMin": 20,
+        "satuan": "bijian",
+        "satuanHarga": [
+            {
+                "satuan": "bijian",
+                "hargaModal": 4500,
+                "hargaEcer": 6000,
+                "hargaGrosir": 5000
+            }
+        ]
+    },
+    {
+        "id": 1758442443,
+        "kodeProduk": "TMY291385",
+        "nama": "Beras",
+        "stok": 50,
+        "stokMin": 5,
+        "satuan": "kg",
+        "satuanHarga": [
+            {
+                "satuan": "kg",
+                "hargaModal": 9900,
+                "hargaEcer": 11500,
+                "hargaGrosir": 11000
+            }
+        ]
+    },
+    {
+        "id": 1758442444,
+        "kodeProduk": "TMY291386",
+        "nama": "Indomie Goreng",
+        "stok": 200,
+        "stokMin": 20,
+        "satuan": "pcs",
+        "satuanHarga": [
+            {
+                "satuan": "pcs",
+                "hargaModal": 2500,
+                "hargaEcer": 3000,
+                "hargaGrosir": 2800
+            }
+        ]
+    },
+    {
+        "id": 1758442445,
+        "kodeProduk": "TMY291387",
+        "nama": "Indomie Ayam Bawang",
+        "stok": 180,
+        "stokMin": 20,
+        "satuan": "pcs",
+        "satuanHarga": [
+            {
+                "satuan": "pcs",
+                "hargaModal": 2500,
+                "hargaEcer": 3000,
+                "hargaGrosir": 2800
+            }
+        ]
+    },
+    {
+        "id": 1758442446,
+        "kodeProduk": "TMY291388",
+        "nama": "Aqua Botol 600ml",
+        "stok": 300,
+        "stokMin": 50,
+        "satuan": "pcs",
+        "satuanHarga": [
+            {
+                "satuan": "pcs",
+                "hargaModal": 2500,
+                "hargaEcer": 4000,
+                "hargaGrosir": 3500
+            }
+        ]
+    },
+    {
+        "id": 1758442447,
+        "kodeProduk": "TMY291389",
+        "nama": "Teh Botol Sosro",
+        "stok": 120,
+        "stokMin": 15,
+        "satuan": "pcs",
+        "satuanHarga": [
+            {
+                "satuan": "pcs",
+                "hargaModal": 3500,
+                "hargaEcer": 5000,
+                "hargaGrosir": 4500
+            }
+        ]
+    },
+    {
+        "id": 1758442448,
+        "kodeProduk": "TMY291390",
+        "nama": "Gula Pasir",
+        "stok": 90,
+        "stokMin": 10,
+        "satuan": "kg",
+        "satuanHarga": [
+            {
+                "satuan": "kg",
+                "hargaModal": 12000,
+                "hargaEcer": 15000,
+                "hargaGrosir": 14000
+            }
+        ]
+    },
+    {
+        "id": 1758442449,
+        "kodeProduk": "TMY291391",
+        "nama": "Telur Ayam",
+        "stok": 500,
+        "stokMin": 100,
+        "satuan": "bijian",
+        "satuanHarga": [
+            {
+                "satuan": "bijian",
+                "hargaModal": 1800,
+                "hargaEcer": 2500,
+                "hargaGrosir": 2200
+            }
+        ]
+    },
+    {
+        "id": 1758442450,
+        "kodeProduk": "TMY291392",
+        "nama": "Minyak Goreng 1L",
+        "stok": 80,
+        "stokMin": 10,
+        "satuan": "liter",
+        "satuanHarga": [
+            {
+                "satuan": "liter",
+                "hargaModal": 15000,
+                "hargaEcer": 19000,
+                "hargaGrosir": 17000
+            }
+        ]
+    },
+    {
+        "id": 1758442451,
+        "kodeProduk": "TMY291393",
+        "nama": "Susu Dancow Box",
+        "stok": 40,
+        "stokMin": 5,
+        "satuan": "box",
+        "satuanHarga": [
+            {
+                "satuan": "box",
+                "hargaModal": 35000,
+                "hargaEcer": 42000,
+                "hargaGrosir": 40000
+            }
+        ]
+    },
+    {
+        "id": 1758442452,
+        "kodeProduk": "TMY291394",
+        "nama": "Susu SGM Box",
+        "stok": 35,
+        "stokMin": 5,
+        "satuan": "box",
+        "satuanHarga": [
+            {
+                "satuan": "box",
+                "hargaModal": 34000,
+                "hargaEcer": 41000,
+                "hargaGrosir": 39000
+            }
+        ]
+    },
+    {
+        "id": 1758442453,
+        "kodeProduk": "TMY291395",
+        "nama": "Kopi Kapal Api Sachet",
+        "stok": 100,
+        "stokMin": 20,
+        "satuan": "pcs",
+        "satuanHarga": [
+            {
+                "satuan": "pcs",
+                "hargaModal": 1500,
+                "hargaEcer": 2000,
+                "hargaGrosir": 1800
+            }
+        ]
     }
 ]

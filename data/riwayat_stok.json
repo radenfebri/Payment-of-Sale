@@ -75,5 +75,27 @@
         "waktu": "2025-09-21 00:57:30",
         "stok_sebelum": 5,
         "stok_sesudah": 70
+    },
+    {
+        "id_barang": "1758441969",
+        "kode_produk": "TMY939826",
+        "nama_barang": "Kopiko",
+        "jumlah": 12,
+        "jenis": "pengurangan",
+        "keterangan": "Update stok manual",
+        "waktu": "2025-09-21 11:56:29",
+        "stok_sebelum": 12,
+        "stok_sesudah": 0
+    },
+    {
+        "id_barang": "1758441969",
+        "kode_produk": "TMY939826",
+        "nama_barang": "Kopiko",
+        "jumlah": 12,
+        "jenis": "penambahan",
+        "keterangan": "Update stok manual",
+        "waktu": "2025-09-21 11:56:35",
+        "stok_sebelum": 0,
+        "stok_sesudah": 12
     }
 ]

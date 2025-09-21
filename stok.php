@@ -334,6 +334,28 @@ if (isset($_GET['action'])) {
                 opacity: 1;
             }
         }
+
+        /* PERBAIKAN: Sticky header untuk tabel - DIPERBAIKI */
+        .table-container {
+            max-height: 70vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        
+        .sticky-header thead th {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background-color: #f8f9fa !important;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding-top: 12px;
+            padding-bottom: 12px;
+        }
+
+        /* Efek hover untuk baris tabel */
+        .hover-row:hover {
+            background-color: #f3f4f6 !important;
+        }
     </style>
 </head>
 
@@ -391,10 +413,10 @@ if (isset($_GET['action'])) {
             <!-- Loading Indicator -->
             <div id="loadingIndicator" class="loading-spinner"></div>
 
-            <!-- Stok Table -->
+            <!-- Stok Table - DIPERBAIKI dengan container untuk sticky header -->
             <div id="stokTableContainer" class="bg-white rounded-lg shadow overflow-hidden hidden">
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
+                <div class="table-container"> <!-- Container dengan max-height dan overflow -->
+                    <table class="w-full text-left border border-gray-300 sticky-header">
                         <thead class="bg-gray-50">
                             <tr>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode Barang</th>
@@ -578,6 +600,7 @@ if (isset($_GET['action'])) {
                             <!-- Data riwayat akan diisi oleh JavaScript -->
                         </tbody>
                     </table>
+
                 </div>
 
                 <div id="riwayatEmptyState" class="hidden text-center py-8">
@@ -677,7 +700,7 @@ if (isset($_GET['action'])) {
                 const rowClass = getRowClass(barang.stok, barang.stokMin);
 
                 const row = document.createElement('tr');
-                row.className = rowClass;
+                row.className = `${rowClass} hover-row`;
                 row.innerHTML = `
                     <td class="px-6 py-4 whitespace-nowrap">${barang.kodeProduk}</td>
                     <td class="px-6 py-4 whitespace-nowrap">${barang.nama}</td>

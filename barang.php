@@ -98,6 +98,39 @@ if (isset($_GET['action'])) {
   <meta charset="utf-8" />
   <title>Manajemen Barang - POS</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .modal {
+      transition: opacity 0.3s ease;
+    }
+
+    .modal.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .modal>div {
+      transform: scale(1);
+      transition: transform 0.3s ease;
+    }
+
+    .modal.hidden>div {
+      transform: scale(0.9);
+    }
+
+    /* Sticky header untuk tabel */
+    .sticky-header thead tr {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background-color: #f9fafb;
+    }
+
+    /* Efek hover untuk baris tabel */
+    .hover-row:hover {
+      background-color: #f3f4f6 !important;
+    }
+  </style>
 </head>
 
 <body class="bg-gray-100 min-h-screen flex">
@@ -106,123 +139,169 @@ if (isset($_GET['action'])) {
   <?php include "partials/sidebar.php"; ?>
 
   <main class="flex-1 p-6">
-    <h2 class="text-2xl font-semibold mb-4">📦 Manajemen Barang</h2>
-
-    <!-- Form -->
-    <div class="bg-white p-6 rounded-lg shadow-lg mb-6 max-w-4xl mx-auto">
-      <form id="form" class="space-y-4">
-        <input type="hidden" id="id" />
-
-        <!-- Kode Produk & Nama Barang -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label for="kodeProduk" class="block text-sm font-medium text-gray-700">Kode Produk</label>
-            <div class="flex gap-2 mt-1">
-              <input id="kodeProduk" placeholder="Scan barcode atau ketik kode"
-                class="border rounded-md p-2 w-full focus:ring-2 focus:ring-blue-400 focus:outline-none" />
-              <button type="button" onclick="generateKodeProduk()"
-                class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-500 transition">Generate</button>
-            </div>
-          </div>
-          <div>
-            <label for="nama" class="block text-sm font-medium text-gray-700">Nama Barang</label>
-            <input id="nama" placeholder="Masukkan Nama Barang"
-              class="border rounded-md p-2 w-full focus:ring-2 focus:ring-blue-400 focus:outline-none" required />
-          </div>
-        </div>
-
-        <!-- Stok & Stok Minimal -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label for="stok" class="block text-sm font-medium text-gray-700">Stok</label>
-            <input id="stok" type="number" placeholder="Jumlah Barang"
-              class="border rounded-md p-2 w-full focus:ring-2 focus:ring-blue-400 focus:outline-none" required />
-          </div>
-          <div>
-            <label for="stokMin" class="block text-sm font-medium text-gray-700">Stok Minimal</label>
-            <input id="stokMin" type="number" placeholder="Jumlah Minimal"
-              class="border rounded-md p-2 w-full focus:ring-2 focus:ring-blue-400 focus:outline-none" />
-          </div>
-        </div>
-
-        <!-- Satuan -->
-        <div class="flex gap-2 mt-1">
-          <div class="flex-1">
-            <label for="satuan" class="block text-sm font-medium text-gray-700">Satuan</label>
-            <select id="satuan" class="border rounded-md p-2 w-full bg-gray-50 focus:ring-2 focus:ring-blue-400">
-              <option value="" disabled selected>Pilih Satuan</option>
-            </select>
-          </div>
-          <div class="flex items-end">
-            <button type="button" onclick="tambahSatuan()"
-              class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-500 transition">+</button>
-          </div>
-        </div>
-
-        <!-- Harga -->
-        <div>
-          <h3 class="font-semibold text-lg text-gray-700 mb-2">Harga</h3>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <input id="hargaModal" type="number" placeholder="Harga Modal"
-              class="border rounded-md p-2 w-full focus:ring-2 focus:ring-blue-400 focus:outline-none" />
-            <input id="hargaEcer" type="number" placeholder="Harga Ecer"
-              class="border rounded-md p-2 w-full focus:ring-2 focus:ring-blue-400 focus:outline-none" />
-            <input id="hargaGrosir" type="number" placeholder="Harga Jual Ulang"
-              class="border rounded-md p-2 w-full focus:ring-2 focus:ring-blue-400 focus:outline-none" />
-          </div>
-        </div>
-
-        <!-- Tombol Simpan & Reset -->
-        <div class="flex flex-col md:flex-row gap-4 mt-4">
-          <button type="submit"
-            class="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-500 transition w-full md:w-auto">Simpan</button>
-          <button type="button" id="reset"
-            class="bg-gray-500 text-white px-6 py-3 rounded-md hover:bg-gray-400 transition w-full md:w-auto">Reset</button>
-        </div>
-
-      </form>
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-2xl font-semibold">📦 Manajemen Barang</h2>
+      <button onclick="bukaModal()" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-500 transition flex items-center">
+        <i class="fas fa-plus mr-2"></i> Tambah Barang
+      </button>
     </div>
-
 
     <!-- Table and Search -->
     <div class="bg-white p-6 rounded-lg shadow-md mb-6 overflow-x-auto">
       <!-- Pencarian dan Filter -->
-      <div class="flex justify-between items-center mb-4">
-        <div class="flex gap-3">
-          <input id="search" type="text" class="border rounded-md p-2" placeholder="Cari Barang..." oninput="filterTable()">
-          <select id="filterSatuan" class="border rounded-md p-2" onchange="filterTable()">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
+        <div class="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+          <input id="search" type="text" class="border rounded-md p-2 w-full md:w-64" placeholder="Cari Barang..." oninput="filterTable()">
+          <select id="filterSatuan" class="border rounded-md p-2 w-full md:w-48" onchange="filterTable()">
             <option value="">Filter Berdasarkan Satuan</option>
             <!-- Opsi satuan akan diisi oleh JavaScript -->
           </select>
-          <button onclick="clearFilters()" class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-500">Reset Filter</button>
+          <button onclick="clearFilters()" class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-500 w-full md:w-auto">Reset Filter</button>
         </div>
         <span id="stokWarning" class="text-sm text-red-500"></span>
       </div>
 
       <!-- Tabel Barang -->
-      <table class="w-full text-left border border-gray-300">
-        <thead>
-          <tr class="bg-gray-200">
-            <th class="p-3 border">Kode</th>
-            <th class="p-3 border">Nama</th>
-            <th class="p-3 border">Stok</th>
-            <th class="p-3 border">Satuan</th>
-            <th class="p-3 border">Harga Modal</th>
-            <th class="p-3 border">Harga Ecer</th>
-            <th class="p-3 border">Harga Jual Ulang</th>
-            <th class="p-3 border">Aksi</th>
-          </tr>
-        </thead>
-        <tbody id="tabelBarang"></tbody>
-      </table>
+      <div class="overflow-y-auto max-h-96">
+        <table class="w-full text-left border border-gray-300 sticky-header">
+          <thead>
+            <tr class="bg-gray-200">
+              <th class="p-3 border">Kode</th>
+              <th class="p-3 border">Nama</th>
+              <th class="p-3 border">Stok</th>
+              <th class="p-3 border">Satuan</th>
+              <th class="p-3 border">Harga Modal</th>
+              <th class="p-3 border">Harga Ecer</th>
+              <th class="p-3 border">Harga Jual Ulang</th>
+              <th class="p-3 border">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="tabelBarang"></tbody>
+        </table>
+      </div>
     </div>
 
   </main>
+
+  <!-- Modal Form -->
+  <div id="modalForm" class="modal fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center hidden z-50">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+      <div class="p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-xl font-semibold" id="modalTitle">Tambah Barang Baru</h3>
+          <button onclick="tutupModal()" class="text-gray-500 hover:text-gray-700">
+            <i class="fas fa-times text-xl"></i>
+          </button>
+        </div>
+
+        <form id="form" class="space-y-4">
+          <input type="hidden" id="id" />
+
+          <!-- Kode Produk & Nama Barang -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label for="kodeProduk" class="block text-sm font-medium text-gray-700">Kode Produk</label>
+              <div class="flex gap-2 mt-1">
+                <input id="kodeProduk" placeholder="Scan barcode atau ketik kode"
+                  class="border rounded-md p-2 w-full focus:ring-2 focus:ring-blue-400 focus:outline-none" />
+                <button type="button" onclick="generateKodeProduk()"
+                  class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-500 transition">Generate</button>
+              </div>
+            </div>
+            <div>
+              <label for="nama" class="block text-sm font-medium text-gray-700">Nama Barang</label>
+              <input id="nama" placeholder="Masukkan Nama Barang"
+                class="border rounded-md p-2 w-full focus:ring-2 focus:ring-blue-400 focus:outline-none" required />
+            </div>
+          </div>
+
+          <!-- Stok & Stok Minimal -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label for="stok" class="block text-sm font-medium text-gray-700">Stok</label>
+              <input id="stok" type="number" placeholder="Jumlah Barang"
+                class="border rounded-md p-2 w-full focus:ring-2 focus:ring-blue-400 focus:outline-none" required />
+            </div>
+            <div>
+              <label for="stokMin" class="block text-sm font-medium text-gray-700">Stok Minimal</label>
+              <input id="stokMin" type="number" placeholder="Jumlah Minimal"
+                class="border rounded-md p-2 w-full focus:ring-2 focus:ring-blue-400 focus:outline-none" />
+            </div>
+          </div>
+
+          <!-- Satuan -->
+          <div class="flex gap-2 mt-1">
+            <div class="flex-1">
+              <label for="satuan" class="block text-sm font-medium text-gray-700">Satuan</label>
+              <select id="satuan" class="border rounded-md p-2 w-full bg-gray-50 focus:ring-2 focus:ring-blue-400">
+                <option value="" disabled selected>Pilih Satuan</option>
+              </select>
+            </div>
+            <div class="flex items-end">
+              <button type="button" onclick="tambahSatuan()"
+                class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-500 transition">+</button>
+            </div>
+          </div>
+
+          <!-- Harga -->
+          <div>
+            <h3 class="font-semibold text-lg text-gray-700 mb-2">Harga</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label for="hargaModal" class="block text-sm font-medium text-gray-700 mb-1">Harga Modal</label>
+                <input id="hargaModal" type="number" placeholder="Harga Modal"
+                  class="border rounded-md p-2 w-full focus:ring-2 focus:ring-blue-400 focus:outline-none" />
+              </div>
+              <div>
+                <label for="hargaEcer" class="block text-sm font-medium text-gray-700 mb-1">Harga Ecer</label>
+                <input id="hargaEcer" type="number" placeholder="Harga Ecer"
+                  class="border rounded-md p-2 w-full focus:ring-2 focus:ring-blue-400 focus:outline-none" />
+              </div>
+              <div>
+                <label for="hargaGrosir" class="block text-sm font-medium text-gray-700 mb-1">Harga Jual Ulang</label>
+                <input id="hargaGrosir" type="number" placeholder="Harga Jual Ulang"
+                  class="border rounded-md p-2 w-full focus:ring-2 focus:ring-blue-400 focus:outline-none" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Tombol Simpan & Reset -->
+          <div class="flex flex-col md:flex-row gap-4 mt-6 pt-4 border-t border-gray-200">
+            <button type="submit"
+              class="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-500 transition w-full md:w-auto flex items-center justify-center">
+              <i class="fas fa-save mr-2"></i> Simpan
+            </button>
+            <button type="button" onclick="resetForm()"
+              class="bg-gray-500 text-white px-6 py-3 rounded-md hover:bg-gray-400 transition w-full md:w-auto flex items-center justify-center">
+              <i class="fas fa-redo mr-2"></i> Reset
+            </button>
+            <button type="button" onclick="tutupModal()"
+              class="bg-red-600 text-white px-6 py-3 rounded-md hover:bg-red-500 transition w-full md:w-auto flex items-center justify-center">
+              <i class="fas fa-times mr-2"></i> Batal
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 
   <script>
     // Variabel global untuk menyimpan data barang
     let allBarang = [];
     let filteredBarang = [];
+
+    // Fungsi untuk membuka modal
+    function bukaModal() {
+      resetForm();
+      document.getElementById("modalTitle").textContent = "Tambah Barang Baru";
+      document.getElementById("modalForm").classList.remove("hidden");
+      document.getElementById("nama").focus();
+    }
+
+    // Fungsi untuk menutup modal
+    function tutupModal() {
+      document.getElementById("modalForm").classList.add("hidden");
+    }
 
     // Fungsi untuk generate kode produk otomatis berdasarkan timestamp
     function generateKodeProduk() {
@@ -232,10 +311,12 @@ if (isset($_GET['action'])) {
 
     // Event onLoad
     window.onload = function() {
-      generateKodeProduk();
       loadSatuan();
       loadBarang();
       loadSatuanOptions(); // Memuat opsi satuan untuk filter
+
+      // Fokus pada input pencarian saat halaman dimuat
+      document.getElementById("search").focus();
     };
 
     // Memuat opsi satuan untuk dropdown filter
@@ -246,13 +327,16 @@ if (isset($_GET['action'])) {
 
         let data = await res.json();
         let filterSatuanSelect = document.getElementById("filterSatuan");
+        let satuanSelect = document.getElementById("satuan");
 
         // Kosongkan dulu opsi yang ada (kecuali opsi default)
         filterSatuanSelect.innerHTML = '<option value="">Filter Berdasarkan Satuan</option>';
+        satuanSelect.innerHTML = '<option value="" disabled selected>Pilih Satuan</option>';
 
         // Tambahkan opsi satuan
         data.forEach(s => {
           filterSatuanSelect.innerHTML += `<option value="${s.nama}">${s.nama}</option>`;
+          satuanSelect.innerHTML += `<option value="${s.nama}">${s.nama}</option>`;
         });
       } catch (error) {
         console.error("Error loading satuan options:", error);
@@ -265,12 +349,32 @@ if (isset($_GET['action'])) {
         let res = await fetch("?action=list");
         if (!res.ok) throw new Error("Gagal mengambil data barang");
 
-        allBarang = await res.json();
+        let data = await res.json();
+
+        // Balik urutan supaya data terbaru muncul di atas
+        allBarang = data.reverse();
+
         filteredBarang = [...allBarang];
         displayBarang(filteredBarang);
+
+        // Tampilkan peringatan stok minimal
+        checkStokMinimum();
       } catch (error) {
         console.error("Error loading barang:", error);
         alert("Gagal memuat data barang: " + error.message);
+      }
+    }
+
+
+    // Cek stok minimum dan tampilkan peringatan
+    function checkStokMinimum() {
+      const barangStokMinimal = allBarang.filter(b => b.stok <= b.stokMin && b.stokMin > 0);
+
+      if (barangStokMinimal.length > 0) {
+        document.getElementById("stokWarning").textContent =
+          `Peringatan: ${barangStokMinimal.length} barang mencapai stok minimal`;
+      } else {
+        document.getElementById("stokWarning").textContent = "";
       }
     }
 
@@ -295,20 +399,26 @@ if (isset($_GET['action'])) {
           };
 
         // Cek apakah stok sudah mencapai atau kurang dari stok minimal
-        const isStokMinimum = b.stok <= b.stokMin;
+        const isStokMinimum = b.stokMin > 0 && b.stok <= b.stokMin;
 
         tbody.innerHTML += `
-          <tr class="border-b hover:bg-gray-100 ${isStokMinimum ? 'bg-yellow-100' : ''}">
+          <tr class="border-b hover-row ${isStokMinimum ? 'bg-yellow-100' : ''}">
             <td class="p-3 border">${b.kodeProduk || '-'}</td>
-            <td class="p-3 border">${b.nama || '-'}</td>
-            <td class="p-3 border">${b.stok || 0}</td>
+            <td class="p-3 border font-medium">${b.nama || '-'}</td>
+            <td class="p-3 border ${isStokMinimum ? 'text-red-600 font-bold' : ''}">${b.stok || 0}</td>
             <td class="p-3 border">${b.satuan || '-'}</td>
             <td class="p-3 border">Rp ${parseInt(harga.hargaModal || 0).toLocaleString('id-ID')}</td>
             <td class="p-3 border">Rp ${parseInt(harga.hargaEcer || 0).toLocaleString('id-ID')}</td>
             <td class="p-3 border">Rp ${parseInt(harga.hargaGrosir || 0).toLocaleString('id-ID')}</td>
             <td class="p-3 border">
-              <button onclick="editBarang(${b.id})" class="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-400 text-sm">Edit</button>
-              <button onclick='hapusBarang(${b.id})' class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-500 text-sm">Hapus</button>
+              <div class="flex flex-col sm:flex-row gap-2">
+                <button onclick="editBarang(${b.id})" class="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-400 text-sm flex items-center justify-center">
+                  <i class="fas fa-edit mr-1"></i> Edit
+                </button>
+                <button onclick='hapusBarang(${b.id})' class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-500 text-sm flex items-center justify-center">
+                  <i class="fas fa-trash mr-1"></i> Hapus
+                </button>
+              </div>
             </td>
           </tr>
         `;
@@ -352,6 +462,7 @@ if (isset($_GET['action'])) {
 
       filteredBarang = [...allBarang];
       displayBarang(filteredBarang);
+      document.getElementById("search").focus();
     }
 
     // Memuat daftar satuan dan menampilkannya di dropdown form
@@ -445,10 +556,12 @@ if (isset($_GET['action'])) {
         document.getElementById("hargaEcer").value = harga.hargaEcer || "";
         document.getElementById("hargaGrosir").value = harga.hargaGrosir || "";
 
-        // Scroll ke form
-        document.getElementById("form").scrollIntoView({
-          behavior: 'smooth'
-        });
+        // Update judul modal
+        document.getElementById("modalTitle").textContent = "Edit Barang: " + barang.nama;
+
+        // Buka modal
+        document.getElementById("modalForm").classList.remove("hidden");
+        document.getElementById("nama").focus();
 
       } catch (error) {
         console.error("Error editing barang:", error);
@@ -493,7 +606,16 @@ if (isset($_GET['action'])) {
 
         if (result.success) {
           alert(isEdit ? "Barang berhasil diupdate!" : "Barang berhasil ditambahkan!");
-          resetForm();
+
+          if (!isEdit) {
+            // Jika menambah barang baru, reset form untuk input berikutnya
+            resetForm();
+            document.getElementById("nama").focus();
+          } else {
+            // Jika edit, tutup modal
+            tutupModal();
+          }
+
           loadBarang(); // Memuat ulang data barang
         } else {
           alert("Gagal menyimpan data: " + (result.error || "Unknown error"));
@@ -507,6 +629,7 @@ if (isset($_GET['action'])) {
     // Reset form
     function resetForm() {
       document.getElementById("id").value = "";
+      document.getElementById("kodeProduk").value = "";
       document.getElementById("nama").value = "";
       document.getElementById("stok").value = "";
       document.getElementById("stokMin").value = "";
@@ -516,6 +639,7 @@ if (isset($_GET['action'])) {
       document.getElementById("hargaGrosir").value = "";
 
       generateKodeProduk();
+      document.getElementById("modalTitle").textContent = "Tambah Barang Baru";
     }
 
     // Menangani penghapusan barang
@@ -546,16 +670,13 @@ if (isset($_GET['action'])) {
       }
     }
 
-    // Event listener untuk tombol reset
-    document.getElementById("reset").addEventListener("click", resetForm);
-
     // Event listener untuk perubahan satuan
     document.getElementById("satuan").addEventListener("change", function() {
       const satuan = this.value;
       if (satuan) {
-        document.getElementById("hargaModal").placeholder = "Harga Modal " + satuan;
-        document.getElementById("hargaEcer").placeholder = "Harga Ecer " + satuan;
-        document.getElementById("hargaGrosir").placeholder = "Harga Jual Ulang " + satuan;
+        document.getElementById("hargaModal").placeholder = "Harga Modal (" + satuan + ")";
+        document.getElementById("hargaEcer").placeholder = "Harga Ecer (" + satuan + ")";
+        document.getElementById("hargaGrosir").placeholder = "Harga Jual Ulang (" + satuan + ")";
       } else {
         document.getElementById("hargaModal").placeholder = "Harga Modal";
         document.getElementById("hargaEcer").placeholder = "Harga Ecer";
@@ -563,12 +684,27 @@ if (isset($_GET['action'])) {
       }
     });
 
-
     // Tangkap input dari scanner (Enter key)
     document.getElementById("kodeProduk").addEventListener("keypress", function(e) {
       if (e.key === "Enter") {
-        document.getElementById("nama").focus(); // Pindah ke input berikutnya
+        e.preventDefault();
+        document.getElementById("nama").focus();
       }
+    });
+
+    // Navigasi form dengan tombol Enter
+    const formInputs = document.querySelectorAll('#form input, #form select');
+    formInputs.forEach((input, index) => {
+      input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (index < formInputs.length - 1) {
+            formInputs[index + 1].focus();
+          } else {
+            document.getElementById('form').dispatchEvent(new Event('submit'));
+          }
+        }
+      });
     });
   </script>
 
