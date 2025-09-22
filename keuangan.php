@@ -24,6 +24,65 @@ if (isset($_GET['action'])) {
     $keuangan = json_decode(file_get_contents($keuanganFile), true) ?? [];
     $input = json_decode(file_get_contents("php://input"), true);
 
+    function syncAuto()
+    {
+        global $penjualan, $keuangan, $penjualanFile, $keuanganFile;
+
+        $updated = false;
+        $count = 0;
+
+        foreach ($penjualan as &$p) {
+            $hasDebt = isset($p['hutang']) && $p['hutang'] > 0;
+            $alreadyRecorded = isset($p['recorded_in_keuangan']) && $p['recorded_in_keuangan'] === true;
+
+            // Jangan sync jika sudah dicatat
+            if ($alreadyRecorded) {
+                continue;
+            }
+
+            // Hitung laba yang sudah diterima (dari bagian yang sudah dibayar)
+            $totalLaba = isset($p['totalLaba']) ? $p['totalLaba'] : $p['grandTotal'];
+            $totalValue = $p['grandTotal'];
+            $hutang = $p['hutang'] ?? 0;
+
+            // Hitung persentase yang sudah dibayar
+            if ($totalValue > 0) {
+                $persentaseBayar = ($totalValue - $hutang) / $totalValue;
+                $labaDiterima = $totalLaba * $persentaseBayar;
+            } else {
+                $labaDiterima = $totalLaba;
+            }
+
+            // Bulatkan ke integer
+            $labaDiterima = (int) round($labaDiterima);
+
+            if ($labaDiterima > 0) {
+                $keterangan = 'Penjualan: ' . ($p['nama_pembeli'] ?? 'Pelanggan') .
+                    ($hasDebt ? ' (Sebagian, hutang: ' . $hutang . ')' : '');
+
+                $newTransaction = [
+                    'id' => uniqid(),
+                    'jenis' => 'pemasukan',
+                    'jumlah' => $labaDiterima,
+                    'keterangan' => $keterangan,
+                    'tanggal' => $p['waktu']
+                ];
+
+                $keuangan[] = $newTransaction;
+                $p['recorded_in_keuangan'] = true;
+                $updated = true;
+                $count++;
+            }
+        }
+
+        if ($updated) {
+            file_put_contents($keuanganFile, json_encode($keuangan, JSON_PRETTY_PRINT));
+            file_put_contents($penjualanFile, json_encode($penjualan, JSON_PRETTY_PRINT));
+        }
+
+        return $count;
+    }
+
     switch ($_GET['action']) {
         case 'get_dashboard_data':
             // Hitung total penjualan hari ini
@@ -124,6 +183,16 @@ if (isset($_GET['action'])) {
                 }
             }
 
+            foreach ($penjualan as $p) {
+                if (!isset($p['hutang']) || $p['hutang'] == 0) {
+                    if (isset($p['totalLaba'])) {
+                        $saldo += $p['totalLaba'];
+                    } else {
+                        $saldo += $p['grandTotal'];
+                    }
+                }
+            }
+
             header('Content-Type: application/json');
             echo json_encode([
                 'penjualanHariIni' => $penjualanHariIni,
@@ -165,6 +234,17 @@ if (isset($_GET['action'])) {
                 return $sum + $p['grandTotal'];
             }, 0);
 
+            // Hitung total laba dari penjualan
+            $totalLaba = array_reduce($penjualanBulanan, function ($sum, $p) {
+                // Gunakan totalLaba jika ada, jika tidak gunakan perhitungan lama
+                if (isset($p['totalLaba'])) {
+                    return $sum + $p['totalLaba'];
+                } else {
+                    // Fallback jika totalLaba tidak ada
+                    return $sum + $p['grandTotal'];
+                }
+            }, 0);
+
             // Hitung total transaksi
             $totalTransaksi = count($penjualanBulanan);
 
@@ -189,7 +269,7 @@ if (isset($_GET['action'])) {
             }
 
             // Hitung total pemasukan dan pengeluaran
-            $totalPemasukan = $totalPenjualan + $pemasukanLain;
+            $totalPemasukan = $totalLaba + $pemasukanLain; // Gunakan laba, bukan total penjualan
             $totalPengeluaran = $pengeluaranLain;
             $saldoBulanan = $totalPemasukan - $totalPengeluaran;
 
@@ -220,6 +300,7 @@ if (isset($_GET['action'])) {
             header('Content-Type: application/json');
             echo json_encode([
                 'totalPenjualan' => $totalPenjualan,
+                'totalLaba' => $totalLaba, // Tambahkan totalLaba ke response
                 'totalTransaksi' => $totalTransaksi,
                 'piutangBulanan' => $piutangBulanan,
                 'pemasukanLain' => $pemasukanLain,
@@ -232,7 +313,18 @@ if (isset($_GET['action'])) {
             ]);
             exit;
 
+        case 'auto_sync_keuangan':
+            $count = syncAuto();
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true,
+                'count' => $count,
+                'message' => "Berhasil sinkronisasi $count transaksi penjualan ke keuangan"
+            ]);
+            exit;
+
         case 'get_keuangan_data':
+            syncAuto();
             header('Content-Type: application/json');
             echo json_encode($keuangan);
             exit;
@@ -280,6 +372,56 @@ if (isset($_GET['action'])) {
 
             file_put_contents($keuanganFile, json_encode($newKeuanganData, JSON_PRETTY_PRINT));
             echo json_encode(['success' => true]);
+            exit;
+
+        case 'sync_saldo_penjualan':
+            $updated = false;
+            $count = 0;
+            $debug = [];
+
+            foreach ($penjualan as &$p) {
+                $hasDebt = isset($p['hutang']) && $p['hutang'] > 0;
+                $alreadyRecorded = isset($p['recorded_in_keuangan']) && $p['recorded_in_keuangan'] === true;
+
+                $debug[] = [
+                    'id' => $p['id'],
+                    'waktu' => $p['waktu'],
+                    'grandTotal' => $p['grandTotal'],
+                    'totalLaba' => $p['totalLaba'] ?? 'tidak ada',
+                    'hutang' => $p['hutang'] ?? 0,
+                    'hasDebt' => $hasDebt,
+                    'alreadyRecorded' => $alreadyRecorded,
+                    'shouldSync' => !$alreadyRecorded && !$hasDebt
+                ];
+
+                if (!$alreadyRecorded && !$hasDebt) {
+                    $newTransaction = [
+                        'id' => uniqid(),
+                        'jenis' => 'pemasukan',
+                        'jumlah' => isset($p['totalLaba']) ? $p['totalLaba'] : $p['grandTotal'],
+                        'keterangan' => 'Penjualan: ' . ($p['nama_pembeli'] ?? 'Pelanggan'),
+                        'tanggal' => $p['waktu']
+                    ];
+
+                    $keuangan[] = $newTransaction;
+                    $p['recorded_in_keuangan'] = true;
+                    $updated = true;
+                    $count++;
+                }
+            }
+
+            if ($updated) {
+                file_put_contents($keuanganFile, json_encode($keuangan, JSON_PRETTY_PRINT));
+                file_put_contents($penjualanFile, json_encode($penjualan, JSON_PRETTY_PRINT));
+            }
+
+            echo json_encode([
+                'success' => true,
+                'updated' => $updated,
+                'count' => $count,
+                'message' => $updated ? "Berhasil menambahkan $count transaksi keuangan dari penjualan" : "Tidak ada penjualan lunas yang belum tercatat",
+                'debug' => $debug // Hapus ini di production
+            ]);
             exit;
     }
 }
@@ -413,7 +555,7 @@ if (isset($_GET['action'])) {
             <!-- Grafik Pendapatan -->
             <div class="bg-white p-6 rounded-lg shadow-lg">
                 <h3 class="text-lg font-semibold mb-4">Pendapatan 7 Hari Terakhir</h3>
-                <canvas id="revenueChart" height="250"></canvas>
+                <canvas id="revenueChart"></canvas>
             </div>
 
             <!-- Produk Terlaris -->
@@ -432,23 +574,26 @@ if (isset($_GET['action'])) {
             <div class="bg-white p-6 rounded-lg shadow-lg">
                 <h3 class="text-lg font-semibold mb-4">Transaksi Terbaru</h3>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left">
-                        <thead>
-                            <tr class="bg-gray-100">
-                                <th class="p-2">Waktu</th>
-                                <th class="p-2">Customer</th>
-                                <th class="p-2">Total</th>
-                                <th class="p-2">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="recentTransactions">
-                            <tr>
-                                <td colspan="4" class="p-4 text-center text-gray-500">
-                                    <i class="fas fa-spinner fa-spin mr-2"></i> Memuat data...
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <!-- Atur tinggi tetap untuk 7 baris data -->
+                    <div class="h-[320px] overflow-y-auto">
+                        <table class="w-full text-left border-collapse text-base">
+                            <thead class="sticky top-0 bg-gray-100 z-10 text-sm">
+                                <tr>
+                                    <th class="px-4 py-3 border-b border-gray-200">Waktu</th>
+                                    <th class="px-4 py-3 border-b border-gray-200">Customer</th>
+                                    <th class="px-4 py-3 border-b border-gray-200">Total</th>
+                                    <th class="px-4 py-3 border-b border-gray-200">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentTransactions" class="text-sm">
+                                <tr>
+                                    <td colspan="4" class="p-4 text-center text-gray-500">
+                                        <i class="fas fa-spinner fa-spin mr-2"></i> Memuat data...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -488,7 +633,7 @@ if (isset($_GET['action'])) {
                 </div>
                 <div class="md:col-span-4 flex justify-end">
                     <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-500">
-                        <i class="fas fa-plus mr-1"></i> Tambah Transaksi
+                        <i class="fas fa-save mr-1"></i> Tambah Transaksi
                     </button>
                 </div>
             </form>
@@ -735,24 +880,31 @@ if (isset($_GET['action'])) {
             }
 
             let html = '';
-            transaksi.forEach(t => {
+            // urutkan desc + ambil 10 data saja
+            const terbaru = transaksi
+                .sort((a, b) => new Date(b.waktu) - new Date(a.waktu))
+                .slice(0, 10);
+
+            terbaru.forEach(t => {
                 const waktu = formatTanggalIndonesia(t.waktu);
                 const status = t.hutang > 0 ?
                     '<span class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded">Hutang</span>' :
                     '<span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">Lunas</span>';
 
                 html += `
-            <tr class="border-b">
-                <td class="p-2">${waktu}</td>
-                <td class="p-2">${t.nama_pembeli || 'Pelanggan'}</td>
-                <td class="p-2 font-medium">${formatRupiah(t.grandTotal)}</td>
-                <td class="p-2">${status}</td>
-            </tr>
-        `;
+                    <tr class="border-b hover:bg-gray-50">
+                    <td class="px-4 py-3">${waktu}</td>
+                    <td class="px-4 py-3">${t.nama_pembeli || 'Pelanggan'}</td>
+                    <td class="px-4 py-3 font-medium">${formatRupiah(t.grandTotal)}</td>
+                    <td class="px-4 py-3">${status}</td>
+                    </tr>
+                    `;
+
             });
 
             container.innerHTML = html;
         }
+
 
         // Tampilkan piutang pelanggan
         function tampilkanPiutangPelanggan(piutang) {
@@ -1054,17 +1206,52 @@ if (isset($_GET['action'])) {
         // Event listener untuk form edit
         document.getElementById('formEditTransaksi').addEventListener('submit', simpanEditTransaksi);
 
-        // Set default value untuk input tanggal dengan GMT+7
-        document.addEventListener('DOMContentLoaded', function() {
-            const now = new Date();
-            // Dapatkan waktu lokal Jakarta (GMT+7)
-            const offset = 7; // GMT+7
-            const localNow = new Date(now.getTime() + offset * 60 * 60 * 1000);
-            const localDateTime = localNow.toISOString().slice(0, 16);
-            document.querySelector('input[name="tanggal"]').value = localDateTime;
+        // Fungsi untuk sinkronisasi saldo dengan penjualan
+        async function syncSaldoPenjualan() {
+            try {
+                await fetch('?action=sync_saldo_penjualan');
+                muatDashboardData();
+                muatDaftarTransaksi();
+            } catch (error) {
+                console.error('Error sinkronisasi saldo:', error);
+            }
+        }
 
-            muatDashboardData();
-            muatDaftarTransaksi();
+        // Sinkronisasi otomatis saat halaman keuangan dimuat
+        document.addEventListener('DOMContentLoaded', function() {
+            // Jalankan sinkronisasi otomatis
+            fetch('?action=auto_sync_keuangan')
+                .then(response => {
+                    // Cek jika response adalah JSON
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        return response.json();
+                    } else {
+                        // Jika bukan JSON, mungkin error HTML
+                        return response.text().then(text => {
+                            throw new Error('Server returned HTML instead of JSON');
+                        });
+                    }
+                })
+                .then(data => {
+                    if (data.success && data.count > 0) {
+                        console.log(`✅ ${data.message}`);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error sinkronisasi otomatis:', error);
+                })
+                .finally(() => {
+                    // Tetap load data meski sync gagal
+                    const now = new Date();
+                    const offset = 7;
+                    const localNow = new Date(now.getTime() + offset * 60 * 60 * 1000);
+                    const localDateTime = localNow.toISOString().slice(0, 16);
+                    document.querySelector('input[name="tanggal"]').value = localDateTime;
+
+                    muatDashboardData();
+                    muatDaftarTransaksi();
+                });
         });
 
         // Muat laporan bulanan

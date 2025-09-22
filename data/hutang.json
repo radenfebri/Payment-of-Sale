@@ -1,86 +1,12 @@
 [
     {
-        "id": "H1758419307",
-        "id_penjualan": 1758419307,
-        "nama": "Raden",
-        "jumlah": 50000,
-        "tanggal": "2025-09-21 01:48:27",
-        "status": "belum lunas",
-        "tanggal_bayar": null,
-        "tax": 0,
-        "last_tax_update": "2025-09-21 10:52:24",
-        "perubahan": {
-            "tanggal": "2025-09-21 12:30:13",
-            "dari": 500001,
-            "ke": 50000,
-            "selisih": -450001,
-            "alasan": "Penyesuaian harga",
-            "tipe": "potongan"
-        },
-        "jumlah_awal": 50000
-    },
-    {
-        "id": "68cf8d3bce74b",
-        "id_penjualan": "manual-68cf8d3bce750",
-        "nama": "tes",
-        "jumlah": 10000,
-        "jumlah_awal": 10000,
-        "keterangan": "tes",
-        "tanggal": "2025-09-21 12:29:00",
-        "status": "belum lunas",
-        "tanggal_bayar": null,
-        "tipe": "manual",
-        "perubahan": null
-    },
-    {
-        "id": "H1758433416",
-        "id_penjualan": 1758433416,
-        "nama": "TES",
-        "jumlah": 12000,
-        "tanggal": "2025-09-21 05:43:36",
-        "status": "belum lunas",
-        "tanggal_bayar": null,
-        "perubahan": null,
-        "jumlah_awal": 12000
-    },
-    {
-        "id": "H1758466840",
-        "id_penjualan": 1758466840,
-        "nama": "Pelanggan",
-        "jumlah": 97600,
-        "tanggal": "2025-09-21 15:00:40",
-        "status": "belum lunas",
-        "tanggal_bayar": null,
-        "jumlah_awal": 97600
-    },
-    {
-        "id": "H1758467091",
-        "id_penjualan": 1758467091,
-        "nama": "Pelanggan",
-        "jumlah": 72000,
-        "tanggal": "2025-09-21 15:04:51",
-        "status": "belum lunas",
-        "tanggal_bayar": null,
-        "jumlah_awal": 72000
-    },
-    {
-        "id": "H1758468689",
-        "id_penjualan": 1758468689,
+        "id": "H1758514806",
+        "id_penjualan": 1758514806,
         "nama": "Raden Febri",
-        "jumlah": 30000,
-        "tanggal": "2025-09-21 22:31:29",
+        "jumlah": 300,
+        "tanggal": "2025-09-22 11:20:06",
         "status": "belum lunas",
         "tanggal_bayar": null,
-        "jumlah_awal": 30000
-    },
-    {
-        "id": "H1758504569",
-        "id_penjualan": 1758504569,
-        "nama": "Pelanggan",
-        "jumlah": 4100,
-        "tanggal": "2025-09-22 08:29:29",
-        "status": "belum lunas",
-        "tanggal_bayar": null,
-        "jumlah_awal": 4100
+        "jumlah_awal": 300
     }
 ]
