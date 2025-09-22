@@ -3,6 +3,9 @@
 header("Cache-Control: no-cache, must-revalidate");
 header("Pragma: no-cache");
 
+// Set timezone ke GMT+7
+date_default_timezone_set('Asia/Jakarta');
+
 $barangFile = __DIR__ . "/data/barang.json";
 $penjualanFile = __DIR__ . "/data/penjualan.json";
 $hutangFile = __DIR__ . "/data/hutang.json";
@@ -128,6 +131,11 @@ if (isset($_GET['action'])) {
         /* Menghilangkan border pada container kosong */
         #keranjangKosong {
             border: none;
+        }
+
+        /* Modal struk harus di atas header sticky */
+        #modalStruk {
+            z-index: 1000;
         }
     </style>
 </head>
@@ -276,6 +284,37 @@ if (isset($_GET['action'])) {
         let grandTotal = 0;
         let diskon = 0;
 
+        // Fungsi untuk memuat keranjang dari localStorage
+        function muatKeranjangDariPenyimpanan() {
+            const keranjangTersimpan = localStorage.getItem('keranjangPOS');
+            if (keranjangTersimpan) {
+                keranjang = JSON.parse(keranjangTersimpan);
+                perbaruiKeranjang();
+            }
+        }
+
+        // Fungsi untuk menyimpan keranjang ke localStorage
+        function simpanKeranjangKePenyimpanan() {
+            localStorage.setItem('keranjangPOS', JSON.stringify(keranjang));
+        }
+
+        // Fungsi untuk mengosongkan keranjang dari localStorage
+        function hapusKeranjangDariPenyimpanan() {
+            localStorage.removeItem('keranjangPOS');
+        }
+
+        // Memuat keranjang saat halaman dimuat
+        document.addEventListener('DOMContentLoaded', function() {
+            muatKeranjangDariPenyimpanan();
+            document.getElementById('cariBarang').focus();
+
+            document.getElementById('cariBarang').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    cariBarang();
+                }
+            });
+        });
+
         // Fungsi untuk mencari barang
         async function cariBarang() {
             const keyword = document.getElementById('cariBarang').value;
@@ -314,35 +353,34 @@ if (isset($_GET['action'])) {
 
             let html = '';
             hasil.forEach(barang => {
-                // Ambil harga ecer dan grosir
                 const hargaEcer = barang.satuanHarga && barang.satuanHarga.length > 0 ?
                     barang.satuanHarga[0].hargaEcer : 0;
                 const hargaGrosir = barang.satuanHarga && barang.satuanHarga.length > 0 ?
                     barang.satuanHarga[0].hargaGrosir : 0;
 
                 html += `
-          <div class="border-b p-3 hover:bg-gray-50 transition-colors duration-200">
-            <div class="flex justify-between items-start">
-              <div class="flex-1">
-                <p class="font-semibold text-blue-700">${barang.nama}</p>
-                <p class="text-sm text-gray-600 mt-1"><i class="fas fa-box mr-1"></i> Stok: ${barang.stok}</p>
-                <div class="flex flex-wrap gap-2 mt-2">
-                  <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">Ecer: Rp ${hargaEcer.toLocaleString('id-ID')}</span>
-                  <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">Grosir: Rp ${hargaGrosir.toLocaleString('id-ID')}</span>
+            <div class="border-b p-3 hover:bg-gray-50 transition-colors duration-200">
+                <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                        <p class="font-semibold text-blue-700">${barang.nama}</p>
+                        <p class="text-sm text-gray-600 mt-1"><i class="fas fa-box mr-1"></i> Stok: ${barang.stok}</p>
+                        <div class="flex flex-wrap gap-2 mt-2">
+                            <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">Ecer: Rp ${hargaEcer.toLocaleString('id-ID')}</span>
+                            <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">Grosir: Rp ${hargaGrosir.toLocaleString('id-ID')}</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-col space-y-2 ml-3">
+                        <button onclick="tambahKeKeranjang(${JSON.stringify(barang).replace(/"/g, '&quot;')}, 'ecer')" 
+                                class="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-500 transition-colors duration-200 flex items-center">
+                            <i class="fas fa-shopping-cart mr-1 text-xs"></i> Ecer
+                        </button>
+                        <button onclick="tambahKeKeranjang(${JSON.stringify(barang).replace(/"/g, '&quot;')}, 'grosir')" 
+                                class="bg-green-600 text-white px-3 py-2 rounded text-sm hover:bg-green-500 transition-colors duration-200 flex items-center">
+                            <i class="fas fa-shopping-cart mr-1 text-xs"></i> Grosir
+                        </button>
+                    </div>
                 </div>
-              </div>
-              <div class="flex flex-col space-y-2 ml-3">
-                <button onclick="tambahKeKeranjang(${JSON.stringify(barang).replace(/"/g, '&quot;')}, 'ecer')" 
-                        class="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-500 transition-colors duration-200 flex items-center">
-                  <i class="fas fa-shopping-cart mr-1 text-xs"></i> Ecer
-                </button>
-                <button onclick="tambahKeKeranjang(${JSON.stringify(barang).replace(/"/g, '&quot;')}, 'grosir')" 
-                        class="bg-green-600 text-white px-3 py-2 rounded text-sm hover:bg-green-500 transition-colors duration-200 flex items-center">
-                  <i class="fas fa-shopping-cart mr-1 text-xs"></i> Grosir
-                </button>
-              </div>
             </div>
-          </div>
         `;
             });
 
@@ -351,7 +389,6 @@ if (isset($_GET['action'])) {
 
         // Menambah barang ke keranjang dengan jenis harga tertentu
         function tambahKeKeranjang(barang, jenisHarga) {
-            // Tentukan harga berdasarkan jenis
             let harga = 0;
             if (barang.satuanHarga && barang.satuanHarga.length > 0) {
                 if (jenisHarga === 'ecer') {
@@ -361,11 +398,9 @@ if (isset($_GET['action'])) {
                 }
             }
 
-            // Cek apakah barang dengan jenis harga yang sama sudah ada di keranjang
             const index = keranjang.findIndex(item => item.id === barang.id && item.jenisHarga === jenisHarga);
 
             if (index !== -1) {
-                // Jika sudah ada, tambah kuantitas
                 if (keranjang[index].qty < barang.stok) {
                     keranjang[index].qty += 1;
                 } else {
@@ -373,9 +408,8 @@ if (isset($_GET['action'])) {
                     return;
                 }
             } else {
-                // Jika belum ada, tambah item baru
                 if (barang.stok > 0) {
-                    keranjang.push({
+                    keranjang.unshift({
                         id: barang.id,
                         nama: barang.nama,
                         harga: harga,
@@ -390,6 +424,7 @@ if (isset($_GET['action'])) {
             }
 
             perbaruiKeranjang();
+            simpanKeranjangKePenyimpanan();
         }
 
         // Memperbarui tampilan keranjang
@@ -410,46 +445,47 @@ if (isset($_GET['action'])) {
             }
 
             let html = '';
+
             keranjang.forEach((item, index) => {
                 const subtotal = item.harga * item.qty;
                 total += subtotal;
 
-                // Tentukan kelas untuk jenis harga
                 const jenisClass = item.jenisHarga === 'ecer' ?
                     'bg-blue-100 text-blue-800' :
                     'bg-green-100 text-green-800';
 
                 html += `
-          <tr class="border-b hover:bg-gray-50 transition-colors duration-200">
-            <td class="p-2">${item.nama}</td>
-            <td class="p-2">Rp ${item.harga.toLocaleString('id-ID')}</td>
-            <td class="p-2">
-              <div class="flex items-center">
-                <button onclick="ubahQty(${index}, -1)" class="bg-gray-200 px-2 py-1 rounded-l hover:bg-gray-300 transition-colors duration-200">
-                  <i class="fas fa-minus text-xs"></i>
-                </button>
-                <input type="number" value="${item.qty}" min="1" max="${item.stok}" 
-                       class="w-12 text-center border-y py-1" onchange="ubahQtyManual(${index}, this.value)">
-                <button onclick="ubahQty(${index}, 1)" class="bg-gray-200 px-2 py-1 rounded-r hover:bg-gray-300 transition-colors duration-200">
-                  <i class="fas fa-plus text-xs"></i>
-                </button>
-              </div>
-            </td>
-            <td class="p-2">
-              <span class="text-xs px-2 py-1 rounded ${jenisClass}">${item.jenisHarga}</span>
-            </td>
-            <td class="p-2 font-medium">Rp ${subtotal.toLocaleString('id-ID')}</td>
-            <td class="p-2">
-              <button onclick="hapusDariKeranjang(${index})" class="bg-red-100 text-red-600 px-2 py-1 rounded text-sm hover:bg-red-200 transition-colors duration-200">
-                <i class="fas fa-trash text-xs"></i>
-              </button>
-            </td>
-          </tr>
+            <tr class="border-b hover:bg-gray-50 transition-colors duration-200">
+                <td class="p-2">${item.nama}</td>
+                <td class="p-2">Rp ${item.harga.toLocaleString('id-ID')}</td>
+                <td class="p-2">
+                    <div class="flex items-center">
+                        <button onclick="ubahQty(${index}, -1)" class="bg-gray-200 px-2 py-1 rounded-l hover:bg-gray-300 transition-colors duration-200">
+                            <i class="fas fa-minus text-xs"></i>
+                        </button>
+                        <input type="number" value="${item.qty}" min="1" max="${item.stok}" 
+                               class="w-12 text-center border-y py-1" onchange="ubahQtyManual(${index}, this.value)">
+                        <button onclick="ubahQty(${index}, 1)" class="bg-gray-200 px-2 py-1 rounded-r hover:bg-gray-300 transition-colors duration-200">
+                            <i class="fas fa-plus text-xs"></i>
+                        </button>
+                    </div>
+                </td>
+                <td class="p-2">
+                    <span class="text-xs px-2 py-1 rounded ${jenisClass}">${item.jenisHarga}</span>
+                </td>
+                <td class="p-2 font-medium">Rp ${subtotal.toLocaleString('id-ID')}</td>
+                <td class="p-2">
+                    <button onclick="hapusDariKeranjang(${index})" class="bg-red-100 text-red-600 px-2 py-1 rounded text-sm hover:bg-red-200 transition-colors duration-200">
+                        <i class="fas fa-trash text-xs"></i>
+                    </button>
+                </td>
+            </tr>
         `;
             });
 
             container.innerHTML = html;
             hitungTotal();
+            simpanKeranjangKePenyimpanan();
         }
 
         // Hitung total dengan diskon
@@ -477,6 +513,7 @@ if (isset($_GET['action'])) {
                 keranjang[index].qty = newQty;
                 perbaruiKeranjang();
             }
+            simpanKeranjangKePenyimpanan();
         }
 
         // Mengubah kuantitas manual
@@ -493,12 +530,14 @@ if (isset($_GET['action'])) {
             }
 
             perbaruiKeranjang();
+            simpanKeranjangKePenyimpanan();
         }
 
         // Menghapus item dari keranjang
         function hapusDariKeranjang(index) {
             keranjang.splice(index, 1);
             perbaruiKeranjang();
+            simpanKeranjangKePenyimpanan();
         }
 
         // Mengosongkan keranjang
@@ -508,6 +547,7 @@ if (isset($_GET['action'])) {
             if (confirm('Apakah Anda yakin ingin mengosongkan keranjang?')) {
                 keranjang = [];
                 perbaruiKeranjang();
+                hapusKeranjangDariPenyimpanan();
             }
         }
 
@@ -578,6 +618,7 @@ if (isset($_GET['action'])) {
                     }
 
                     tampilkanStruk(total, diskon, grandTotal, bayar, kembalian, hutang, namaPembeli);
+                    hapusKeranjangDariPenyimpanan();
                     keranjang = [];
                     perbaruiKeranjang();
                     document.getElementById('bayar').value = '';
@@ -597,22 +638,38 @@ if (isset($_GET['action'])) {
         // Menampilkan struk
         function tampilkanStruk(total, diskon, grandTotal, bayar, kembalian, hutang, namaPembeli) {
             const strukContent = document.getElementById('strukContent');
+            const now = new Date();
+
+            // Format waktu GMT+7 (WIB)
+            const options = {
+                timeZone: 'Asia/Jakarta',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            };
+
+            const waktuJakarta = now.toLocaleString('id-ID', options);
+
             let html = `
         <div class="border-b pb-2 mb-2">
-          <p class="text-center font-semibold">TOKO MUDA YAKIN</p>
-          <p class="text-center text-sm">${new Date().toLocaleString('id-ID')}</p>
-          <p class="text-center text-sm mt-1"><i class="fas fa-user mr-1"></i> ${namaPembeli}</p>
+            <p class="text-center font-semibold">TOKO MUDA YAKIN</p>
+            <p class="text-center text-sm">${waktuJakarta}</p>
+            <p class="text-center text-sm mt-1"><i class="fas fa-user mr-1"></i> ${namaPembeli}</p>
         </div>
         
         <div class="mb-3 max-h-60 overflow-y-auto">
-      `;
+    `;
 
             keranjang.forEach(item => {
+                const subtotal = item.harga * item.qty;
                 html += `
-          <div class="flex justify-between text-sm py-1">
-            <span>${item.nama} <span class="text-xs ${item.jenisHarga === 'ecer' ? 'text-blue-600' : 'text-green-600'}">(${item.jenisHarga})</span> x${item.qty}</span>
-            <span>Rp ${(item.harga * item.qty).toLocaleString('id-ID')}</span>
-          </div>
+            <div class="flex justify-between text-sm py-1">
+                <span>${item.nama} <span class="text-xs ${item.jenisHarga === 'ecer' ? 'text-blue-600' : 'text-green-600'}">(${item.jenisHarga})</span> x${item.qty}</span>
+                <span>Rp ${subtotal.toLocaleString('id-ID')}</span>
+            </div>
         `;
             });
 
@@ -620,37 +677,37 @@ if (isset($_GET['action'])) {
         </div>
         
         <div class="border-t pt-2">
-          <div class="flex justify-between text-sm py-1">
-            <span>Total:</span>
-            <span>Rp ${total.toLocaleString('id-ID')}</span>
-          </div>
-          <div class="flex justify-between text-sm py-1">
-            <span>Diskon:</span>
-            <span class="text-green-600">- Rp ${diskon.toLocaleString('id-ID')}</span>
-          </div>
-          <div class="flex justify-between font-semibold py-1 border-t mt-1">
-            <span>Grand Total:</span>
-            <span>Rp ${grandTotal.toLocaleString('id-ID')}</span>
-          </div>
-          <div class="flex justify-between text-sm py-1">
-            <span>Bayar:</span>
-            <span>Rp ${bayar.toLocaleString('id-ID')}</span>
-          </div>
-      `;
+            <div class="flex justify-between text-sm py-1">
+                <span>Total:</span>
+                <span>Rp ${total.toLocaleString('id-ID')}</span>
+            </div>
+            <div class="flex justify-between text-sm py-1">
+                <span>Diskon:</span>
+                <span class="text-green-600">- Rp ${diskon.toLocaleString('id-ID')}</span>
+            </div>
+            <div class="flex justify-between font-semibold py-1 border-t mt-1">
+                <span>Grand Total:</span>
+                <span>Rp ${grandTotal.toLocaleString('id-ID')}</span>
+            </div>
+            <div class="flex justify-between text-sm py-1">
+                <span>Bayar:</span>
+                <span>Rp ${bayar.toLocaleString('id-ID')}</span>
+            </div>
+    `;
 
             if (kembalian >= 0) {
                 html += `
-          <div class="flex justify-between text-sm py-1">
-            <span>Kembalian:</span>
-            <span class="text-blue-600">Rp ${kembalian.toLocaleString('id-ID')}</span>
-          </div>
+            <div class="flex justify-between text-sm py-1">
+                <span>Kembalian:</span>
+                <span class="text-blue-600">Rp ${kembalian.toLocaleString('id-ID')}</span>
+            </div>
         `;
             } else {
                 html += `
-          <div class="flex justify-between text-sm py-1 text-red-600">
-            <span><i class="fas fa-exclamation-triangle mr-1"></i> Hutang:</span>
-            <span>Rp ${hutang.toLocaleString('id-ID')}</span>
-          </div>
+            <div class="flex justify-between text-sm py-1 text-red-600">
+                <span><i class="fas fa-exclamation-triangle mr-1"></i> Hutang:</span>
+                <span>Rp ${hutang.toLocaleString('id-ID')}</span>
+            </div>
         `;
             }
 
@@ -658,9 +715,9 @@ if (isset($_GET['action'])) {
         </div>
         
         <div class="text-center mt-4 pt-2 border-t text-sm text-gray-600">
-          <p><i class="fas fa-thumbs-up mr-1"></i> Terima kasih atas kunjungannya</p>
+            <p><i class="fas fa-thumbs-up mr-1"></i> Terima kasih atas kunjungannya</p>
         </div>
-      `;
+    `;
 
             strukContent.innerHTML = html;
             document.getElementById('modalStruk').classList.remove('hidden');
@@ -680,26 +737,26 @@ if (isset($_GET['action'])) {
         <!DOCTYPE html>
         <html>
         <head>
-          <title>Cetak Struk</title>
-          <style>
-            body { font-family: Arial, sans-serif; font-size: 14px; padding: 15px; }
-            .center { text-align: center; }
-            .flex { display: flex; }
-            .justify-between { justify-content: space-between; }
-            .border-b { border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 5px; }
-            .border-t { border-top: 1px dashed #000; padding-top: 5px; margin-top: 5px; }
-            .mb-2 { margin-bottom: 10px; }
-            .mb-3 { margin-bottom: 15px; }
-            .mt-4 { margin-top: 20px; }
-            .pt-2 { padding-top: 10px; }
-            .pb-2 { padding-bottom: 10px; }
-          </style>
+            <title>Cetak Struk</title>
+            <style>
+                body { font-family: Arial, sans-serif; font-size: 14px; padding: 15px; }
+                .center { text-align: center; }
+                .flex { display: flex; }
+                .justify-between { justify-content: space-between; }
+                .border-b { border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 5px; }
+                .border-t { border-top: 1px dashed #000; padding-top: 5px; margin-top: 5px; }
+                .mb-2 { margin-bottom: 10px; }
+                .mb-3 { margin-bottom: 15px; }
+                .mt-4 { margin-top: 20px; }
+                .pt-2 { padding-top: 10px; }
+                .pb-2 { padding-bottom: 10px; }
+            </style>
         </head>
         <body onload="window.print(); window.close();">
-          ${content}
+            ${content}
         </body>
         </html>
-      `);
+    `);
 
             printWindow.document.close();
         }

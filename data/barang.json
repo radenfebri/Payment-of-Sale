@@ -3,7 +3,7 @@
         "id": "1758382403",
         "kodeProduk": "TMY344985",
         "nama": "Rinso Box",
-        "stok": 109,
+        "stok": 79,
         "stokMin": 10,
         "satuan": "box",
         "satuanHarga": [
@@ -19,7 +19,7 @@
         "id": "1758382503",
         "kodeProduk": "TMY458579",
         "nama": "Rinso Pcs",
-        "stok": 32,
+        "stok": 10,
         "stokMin": 10,
         "satuan": "pcs",
         "satuanHarga": [
@@ -35,7 +35,7 @@
         "id": "1758384750",
         "kodeProduk": "TMY709458",
         "nama": "Rinso Bijian",
-        "stok": 70,
+        "stok": 60,
         "stokMin": 12,
         "satuan": "bijian",
         "satuanHarga": [
@@ -83,7 +83,7 @@
         "id": 1758442444,
         "kodeProduk": "TMY291386",
         "nama": "Indomie Goreng",
-        "stok": 200,
+        "stok": 195,
         "stokMin": 20,
         "satuan": "pcs",
         "satuanHarga": [
@@ -99,7 +99,7 @@
         "id": 1758442445,
         "kodeProduk": "TMY291387",
         "nama": "Indomie Ayam Bawang",
-        "stok": 180,
+        "stok": 168,
         "stokMin": 20,
         "satuan": "pcs",
         "satuanHarga": [
@@ -163,7 +163,7 @@
         "id": 1758442449,
         "kodeProduk": "TMY291391",
         "nama": "Telur Ayam",
-        "stok": 500,
+        "stok": 493,
         "stokMin": 100,
         "satuan": "bijian",
         "satuanHarga": [
@@ -227,7 +227,7 @@
         "id": 1758442453,
         "kodeProduk": "TMY291395",
         "nama": "Kopi Kapal Api Sachet",
-        "stok": 100,
+        "stok": 92,
         "stokMin": 20,
         "satuan": "pcs",
         "satuanHarga": [

@@ -42,5 +42,35 @@
         "tanggal_bayar": null,
         "perubahan": null,
         "jumlah_awal": 12000
+    },
+    {
+        "id": "H1758466840",
+        "id_penjualan": 1758466840,
+        "nama": "Pelanggan",
+        "jumlah": 97600,
+        "tanggal": "2025-09-21 15:00:40",
+        "status": "belum lunas",
+        "tanggal_bayar": null,
+        "jumlah_awal": 97600
+    },
+    {
+        "id": "H1758467091",
+        "id_penjualan": 1758467091,
+        "nama": "Pelanggan",
+        "jumlah": 72000,
+        "tanggal": "2025-09-21 15:04:51",
+        "status": "belum lunas",
+        "tanggal_bayar": null,
+        "jumlah_awal": 72000
+    },
+    {
+        "id": "H1758468689",
+        "id_penjualan": 1758468689,
+        "nama": "Raden Febri",
+        "jumlah": 30000,
+        "tanggal": "2025-09-21 22:31:29",
+        "status": "belum lunas",
+        "tanggal_bayar": null,
+        "jumlah_awal": 30000
     }
 ]
