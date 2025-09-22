@@ -47,6 +47,34 @@ if (isset($_GET['action'])) {
         case 'simpan_penjualan':
             $input['id'] = time();
             $input['waktu'] = date('Y-m-d H:i:s');
+
+            // Hitung laba untuk setiap item
+            $totalLaba = 0;
+            foreach ($input['items'] as &$item) {
+                foreach ($barang as $b) {
+                    if ($b['id'] == $item['id']) {
+                        // Cari harga modal berdasarkan jenis harga
+                        $hargaModal = 0;
+                        foreach ($b['satuanHarga'] as $harga) {
+                            // PERBAIKAN: Gunakan 'jenisHarga' bukan 'jenisHarga'
+                            if ($item['jenisHarga'] === 'ecer') {
+                                $hargaModal = $harga['hargaModal'] ?? 0;
+                                break; // Tambahkan break setelah menemukan
+                            } else if ($item['jenisHarga'] === 'grosir') {
+                                $hargaModal = $harga['hargaModal'] ?? 0;
+                                break; // Tambahkan break setelah menemukan
+                            }
+                        }
+
+                        $item['hargaModal'] = $hargaModal;
+                        $item['laba'] = ($item['harga'] - $hargaModal) * $item['qty'];
+                        $totalLaba += $item['laba'];
+                        break;
+                    }
+                }
+            }
+
+            $input['totalLaba'] = $totalLaba;
             $penjualan[] = $input;
 
             // Update stok barang
@@ -76,8 +104,14 @@ if (isset($_GET['action'])) {
             file_put_contents($barangFile, json_encode($barang, JSON_PRETTY_PRINT));
             file_put_contents($hutangFile, json_encode($hutang, JSON_PRETTY_PRINT));
 
+            // PERBAIKAN: Tambahkan laba dalam response
             header('Content-Type: application/json');
-            echo json_encode(["success" => true, "id" => $input['id'], "hutang" => $input['hutang'] > 0]);
+            echo json_encode([
+                "success" => true,
+                "id" => $input['id'],
+                "hutang" => $input['hutang'] > 0,
+                "laba" => $totalLaba // Tambahkan informasi laba
+            ]);
             exit;
 
         case 'riwayat_penjualan':
@@ -216,18 +250,18 @@ if (isset($_GET['action'])) {
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
                         <div>
-                            <label for="namaPembeli" class="block text-sm font-medium text-gray-700 mb-1">
-                                <i class="fas fa-user mr-1"></i> Nama Pembeli
-                            </label>
-                            <input type="text" id="namaPembeli" class="border rounded-md p-2 w-full"
-                                placeholder="Masukkan nama pembeli">
-                        </div>
-                        <div>
                             <label for="bayar" class="block text-sm font-medium text-gray-700 mb-1">
                                 <i class="fas fa-money-bill-wave mr-1"></i> Jumlah Bayar
                             </label>
                             <input type="number" id="bayar" class="border rounded-md p-2 w-full"
                                 placeholder="Jumlah bayar" oninput="hitungKembalian()">
+                        </div>
+                        <div>
+                            <label for="namaPembeli" class="block text-sm font-medium text-gray-700 mb-1">
+                                <i class="fas fa-user mr-1"></i> Nama Pembeli
+                            </label>
+                            <input type="text" id="namaPembeli" class="border rounded-md p-2 w-full"
+                                placeholder="Masukkan nama pembeli">
                         </div>
                     </div>
 
@@ -591,6 +625,7 @@ if (isset($_GET['action'])) {
             }
 
             try {
+                // Di fungsi prosesPembayaran(), ubah bagian pengiriman data
                 const response = await fetch('?action=simpan_penjualan', {
                     method: 'POST',
                     headers: {

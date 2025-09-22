@@ -549,5 +549,79 @@
         "nama_pembeli": "Raden Febri",
         "id": 1758468689,
         "waktu": "2025-09-21 22:31:29"
+    },
+    {
+        "items": [
+            {
+                "id": 1758442443,
+                "nama": "Beras",
+                "harga": 11000,
+                "jenisHarga": "grosir",
+                "qty": 3,
+                "stok": 50,
+                "hargaModal": 9900,
+                "laba": 3300
+            },
+            {
+                "id": 1758442443,
+                "nama": "Beras",
+                "harga": 11500,
+                "jenisHarga": "ecer",
+                "qty": 3,
+                "stok": 50,
+                "hargaModal": 9900,
+                "laba": 4800
+            },
+            {
+                "id": 1758442448,
+                "nama": "Gula Pasir",
+                "harga": 14000,
+                "jenisHarga": "grosir",
+                "qty": 1,
+                "stok": 90,
+                "hargaModal": 12000,
+                "laba": 2000
+            },
+            {
+                "id": 1758442448,
+                "nama": "Gula Pasir",
+                "harga": 15000,
+                "jenisHarga": "ecer",
+                "qty": 1,
+                "stok": 90,
+                "hargaModal": 12000,
+                "laba": 3000
+            },
+            {
+                "id": 1758442453,
+                "nama": "Kopi Kapal Api Sachet",
+                "harga": 1800,
+                "jenisHarga": "grosir",
+                "qty": 2,
+                "stok": 92,
+                "hargaModal": 1500,
+                "laba": 600
+            },
+            {
+                "id": 1758442453,
+                "nama": "Kopi Kapal Api Sachet",
+                "harga": 1800,
+                "jenisHarga": "grosir",
+                "qty": 2,
+                "stok": 92,
+                "hargaModal": 1500,
+                "laba": 600
+            }
+        ],
+        "total": 104100,
+        "diskon": 0,
+        "grandTotal": 104100,
+        "bayar": 100000,
+        "kembalian": 0,
+        "hutang": 4100,
+        "nama_pembeli": "Pelanggan",
+        "id": 1758504569,
+        "waktu": "2025-09-22 08:29:29",
+        "totalLaba": 14700
     }
 ]

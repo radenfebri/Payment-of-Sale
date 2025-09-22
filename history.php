@@ -70,6 +70,59 @@ if (isset($_GET['action'])) {
     <title>History Transaksi - POS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* CSS untuk tabel sticky */
+        .table-container {
+            max-height: 500px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+            margin-bottom: 1rem;
+        }
+
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            background-color: #f3f4f6;
+            z-index: 10;
+        }
+
+        .sticky-header th {
+            border-bottom: 2px solid #d1d5db;
+            padding: 0.75rem;
+            font-weight: 600;
+        }
+        #detailContent .max-h-60 {
+            max-height: 15rem;
+        }
+
+        #detailContent .sticky {
+            position: sticky;
+            top: 0;
+            background-color: #f3f4f6;
+            z-index: 10;
+        }
+        #transactionTable {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        #transactionTable th,
+        #transactionTable td {
+            padding: 0.75rem;
+            border: 1px solid #e5e7eb;
+        }
+
+        /* Menghilangkan border pada container kosong */
+        #emptyTransaction {
+            border: none;
+        }
+
+        /* Modal harus di atas header sticky */
+        #modalDetail,
+        #confirmBulkDeleteModal {
+            z-index: 1000;
+        }
+    </style>
 </head>
 
 <body class="bg-gray-100 min-h-screen flex">
@@ -136,21 +189,22 @@ if (isset($_GET['action'])) {
         <!-- Daftar Transaksi -->
         <div class="bg-white p-6 rounded-lg shadow-lg">
             <h3 class="text-lg font-semibold mb-4">Daftar Transaksi</h3>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
+            <div class="table-container">
+                <table id="transactionTable" class="w-full text-left">
                     <thead>
-                        <tr class="bg-gray-100">
-                            <th class="p-3 border-b">No</th>
-                            <th class="p-3 border-b">Waktu</th>
-                            <th class="p-3 border-b">Pembeli</th>
-                            <th class="p-3 border-b">Items</th>
-                            <th class="p-3 border-b">Total</th>
-                            <th class="p-3 border-b">Status</th>
-                            <th class="p-3 border-b">Aksi</th>
+                        <tr class="sticky-header">
+                            <th class="p-3">No</th>
+                            <th class="p-3">Waktu</th>
+                            <th class="p-3">Pembeli</th>
+                            <th class="p-3">Items</th>
+                            <th class="p-3">Total</th>
+                            <th class="p-3">Laba</th>
+                            <th class="p-3">Status</th>
+                            <th class="p-3">Aksi</th>
                         </tr>
                     </thead>
                     <tbody id="daftarTransaksi">
-                        <tr>
+                        <tr id="emptyTransaction">
                             <td colspan="7" class="p-4 text-center text-gray-500">
                                 <i class="fas fa-spinner fa-spin mr-2"></i> Memuat data...
                             </td>
@@ -161,7 +215,7 @@ if (isset($_GET['action'])) {
         </div>
 
         <!-- Modal Detail Transaksi -->
-        <div id="modalDetail" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center hidden z-50">
+        <div id="modalDetail" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center hidden">
             <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
                 <div class="p-6">
                     <h3 class="text-xl font-semibold mb-4">Detail Transaksi</h3>
@@ -176,7 +230,7 @@ if (isset($_GET['action'])) {
         </div>
 
         <!-- Confirmation Modal for Bulk Delete -->
-        <div id="confirmBulkDeleteModal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center hidden z-50">
+        <div id="confirmBulkDeleteModal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center hidden">
             <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
                 <div class="p-6">
                     <h3 class="text-xl font-semibold mb-4 text-red-600"><i class="fas fa-exclamation-circle mr-2"></i>Konfirmasi Hapus Massal</h3>
@@ -235,7 +289,7 @@ if (isset($_GET['action'])) {
             } catch (error) {
                 console.error('Error:', error);
                 document.getElementById('daftarTransaksi').innerHTML = `
-                <tr><td colspan="7" class="p-4 text-center text-red-500">Gagal memuat data transaksi</td></tr>
+                <tr id="emptyTransaction"><td colspan="7" class="p-4 text-center text-red-500">Gagal memuat data transaksi</td></tr>
             `;
             }
         }
@@ -277,8 +331,8 @@ if (isset($_GET['action'])) {
 
             if (transaksi.length === 0) {
                 container.innerHTML = `
-                <tr><td colspan="7" class="p-4 text-center text-gray-500">Tidak ada data transaksi</td></tr>
-            `;
+        <tr id="emptyTransaction"><td colspan="8" class="p-4 text-center text-gray-500">Tidak ada data transaksi</td></tr>
+        `;
                 return;
             }
 
@@ -298,24 +352,28 @@ if (isset($_GET['action'])) {
                     '<span class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded">Hutang</span>' :
                     '<span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">Lunas</span>';
 
+                // Tampilkan laba jika ada, jika tidak tampilkan 0
+                const laba = item.totalLaba !== undefined ? formatRupiah(item.totalLaba) : formatRupiah(0);
+
                 html += `
-                <tr class="border-b hover:bg-gray-50">
-                    <td class="p-3">${index + 1}</td>
-                    <td class="p-3">${formatTanggalIndonesia(item.waktu)}</td>
-                    <td class="p-3">${item.nama_pembeli || 'Pelanggan'}</td>
-                    <td class="p-3">${item.items.length} item</td>
-                    <td class="p-3 font-medium">${formatRupiah(item.grandTotal)}</td>
-                    <td class="p-3">${status}</td>
-                    <td class="p-3">
-                        <button onclick="lihatDetail(${originalIndex})" class="text-blue-500 hover:text-blue-700 mr-2">
-                            <i class="fas fa-eye"></i> Detail
-                        </button>
-                        <button onclick="hapusTransaksi(${originalIndex})" class="text-red-500 hover:text-red-700">
-                            <i class="fas fa-trash-alt"></i> Hapus
-                        </button>
-                    </td>
-                </tr>
-            `;
+        <tr class="border-b hover:bg-gray-50">
+            <td class="p-3">${index + 1}</td>
+            <td class="p-3">${formatTanggalIndonesia(item.waktu)}</td>
+            <td class="p-3">${item.nama_pembeli || 'Pelanggan'}</td>
+            <td class="p-3">${item.items.length} item</td>
+            <td class="p-3 font-medium">${formatRupiah(item.grandTotal)}</td>
+            <td class="p-3 font-medium text-green-600">${laba}</td>
+            <td class="p-3">${status}</td>
+            <td class="p-3">
+                <button onclick="lihatDetail(${originalIndex})" class="text-blue-500 hover:text-blue-700 mr-2">
+                    <i class="fas fa-eye"></i> Detail
+                </button>
+                <button onclick="hapusTransaksi(${originalIndex})" class="text-red-500 hover:text-red-700">
+                    <i class="fas fa-trash-alt"></i> Hapus
+                </button>
+            </td>
+        </tr>
+        `;
             });
 
             container.innerHTML = html;
@@ -407,51 +465,63 @@ if (isset($_GET['action'])) {
         // Lihat detail transaksi
         function lihatDetail(index) {
             const transaksi = currentTransactions[index];
+
+            // Tampilkan laba jika ada, jika tidak tampilkan 0
+            const totalLaba = transaksi.totalLaba !== undefined ? transaksi.totalLaba : 0;
+
             let html = `
-            <div class="mb-4">
-                <h4 class="font-semibold text-lg">Informasi Transaksi</h4>
-                <p><strong>Waktu:</strong> ${formatTanggalIndonesia(transaksi.waktu)}</p>
-                <p><strong>Pembeli:</strong> ${transaksi.nama_pembeli || 'Pelanggan'}</p>
-                <p><strong>Total:</strong> ${formatRupiah(transaksi.total)}</p>
-                <p><strong>Diskon:</strong> ${formatRupiah(transaksi.diskon)}</p>
-                <p><strong>Grand Total:</strong> ${formatRupiah(transaksi.grandTotal)}</p>
-                <p><strong>Bayar:</strong> ${formatRupiah(transaksi.bayar)}</p>
-                <p><strong>Kembalian:</strong> ${formatRupiah(transaksi.kembalian)}</p>
-                <p><strong>Hutang:</strong> ${formatRupiah(transaksi.hutang)}</p>
-            </div>
-            
-            <div>
-                <h4 class="font-semibold text-lg mb-2">Items</h4>
-                <table class="w-full border-collapse">
-                    <thead>
-                        <tr class="bg-gray-100">
-                            <th class="p-2 border">Nama Barang</th>
-                            <th class="p-2 border">Harga</th>
-                            <th class="p-2 border">Jenis Harga</th>
-                            <th class="p-2 border">Qty</th>
-                            <th class="p-2 border">Subtotal</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        `;
+    <div class="mb-4">
+        <h4 class="font-semibold text-lg">Informasi Transaksi</h4>
+        <p><strong>Waktu:</strong> ${formatTanggalIndonesia(transaksi.waktu)}</p>
+        <p><strong>Pembeli:</strong> ${transaksi.nama_pembeli || 'Pelanggan'}</p>
+        <p><strong>Total:</strong> ${formatRupiah(transaksi.total)}</p>
+        <p><strong>Diskon:</strong> ${formatRupiah(transaksi.diskon)}</p>
+        <p><strong>Grand Total:</strong> ${formatRupiah(transaksi.grandTotal)}</p>
+        <p><strong>Bayar:</strong> ${formatRupiah(transaksi.bayar)}</p>
+        <p><strong>Kembalian:</strong> ${formatRupiah(transaksi.kembalian)}</p>
+        <p><strong>Hutang:</strong> ${formatRupiah(transaksi.hutang)}</p>
+        <p><strong>Total Laba:</strong> <span class="text-green-600 font-medium">${formatRupiah(totalLaba)}</span></p>
+    </div>
+    
+    <div>
+        <h4 class="font-semibold text-lg mb-2">Items</h4>
+        <div class="max-h-60 overflow-y-auto border border-gray-200"> <!-- Container untuk sticky table -->
+            <table class="w-full border-collapse">
+                <thead>
+                    <tr class="bg-gray-100 sticky top-0"> <!-- Sticky header -->
+                        <th class="p-2 border">Nama Barang</th>
+                        <th class="p-2 border">Harga</th>
+                        <th class="p-2 border">Jenis Harga</th>
+                        <th class="p-2 border">Qty</th>
+                        <th class="p-2 border">Subtotal</th>
+                        <th class="p-2 border">Laba</th> <!-- Kolom baru untuk Laba per item -->
+                    </tr>
+                </thead>
+                <tbody>
+    `;
 
             transaksi.items.forEach(item => {
+                // Hitung laba per item
+                const labaPerItem = item.laba !== undefined ? item.laba : (item.harga - (item.hargaModal || 0)) * item.qty;
+
                 html += `
-                <tr>
-                    <td class="p-2 border">${item.nama}</td>
-                    <td class="p-2 border">${formatRupiah(item.harga)}</td>
-                    <td class="p-2 border">${item.jenisHarga}</td>
-                    <td class="p-2 border">${item.qty}</td>
-                    <td class="p-2 border">${formatRupiah(item.harga * item.qty)}</td>
-                </tr>
-            `;
+        <tr>
+            <td class="p-2 border">${item.nama}</td>
+            <td class="p-2 border">${formatRupiah(item.harga)}</td>
+            <td class="p-2 border">${item.jenisHarga}</td>
+            <td class="p-2 border">${item.qty}</td>
+            <td class="p-2 border">${formatRupiah(item.harga * item.qty)}</td>
+            <td class="p-2 border text-green-600">${formatRupiah(labaPerItem)}</td>
+        </tr>
+        `;
             });
 
             html += `
-                    </tbody>
-                </table>
-            </div>
-        `;
+                </tbody>
+            </table>
+        </div>
+    </div>
+    `;
 
             document.getElementById('detailContent').innerHTML = html;
             document.getElementById('modalDetail').classList.remove('hidden');

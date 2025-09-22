@@ -67,7 +67,7 @@
         "id": 1758442443,
         "kodeProduk": "TMY291385",
         "nama": "Beras",
-        "stok": 50,
+        "stok": 44,
         "stokMin": 5,
         "satuan": "kg",
         "satuanHarga": [
@@ -147,7 +147,7 @@
         "id": 1758442448,
         "kodeProduk": "TMY291390",
         "nama": "Gula Pasir",
-        "stok": 90,
+        "stok": 88,
         "stokMin": 10,
         "satuan": "kg",
         "satuanHarga": [
@@ -227,7 +227,7 @@
         "id": 1758442453,
         "kodeProduk": "TMY291395",
         "nama": "Kopi Kapal Api Sachet",
-        "stok": 92,
+        "stok": 88,
         "stokMin": 20,
         "satuan": "pcs",
         "satuanHarga": [
