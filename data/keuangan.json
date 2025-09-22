@@ -19,5 +19,12 @@
         "jumlah": 10700,
         "keterangan": "Penjualan: Pelanggan",
         "tanggal": "2025-09-22 11:23:21"
+    },
+    {
+        "id": "68d0d055da026",
+        "jenis": "pengeluaran",
+        "jumlah": 7218,
+        "keterangan": "Tes Pengeluaran",
+        "tanggal": "2025-09-22 11:27:00"
     }
 ]

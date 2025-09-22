@@ -173,7 +173,7 @@ if (isset($_GET['action'])) {
             arsort($piutangPelanggan);
             $topPiutang = array_slice($piutangPelanggan, 0, 5, true);
 
-            // Hitung saldo dari data keuangan
+            // Hitung saldo hanya dari keuangan.json
             $saldo = 0;
             foreach ($keuangan as $trx) {
                 if ($trx['jenis'] === 'pemasukan') {
@@ -183,15 +183,6 @@ if (isset($_GET['action'])) {
                 }
             }
 
-            foreach ($penjualan as $p) {
-                if (!isset($p['hutang']) || $p['hutang'] == 0) {
-                    if (isset($p['totalLaba'])) {
-                        $saldo += $p['totalLaba'];
-                    } else {
-                        $saldo += $p['grandTotal'];
-                    }
-                }
-            }
 
             header('Content-Type: application/json');
             echo json_encode([
@@ -1111,7 +1102,7 @@ if (isset($_GET['action'])) {
             const data = {
                 id: formData.get('id'),
                 jenis: formData.get('jenis'),
-                jumlah: parseInt(formData.get('jumlah')),
+                jumlah: parseInt(formData.get('jumlah').replace(/\D/g, '')),
                 keterangan: formData.get('keterangan'),
                 tanggal: formData.get('tanggal')
             };
@@ -1574,7 +1565,7 @@ if (isset($_GET['action'])) {
             const formData = new FormData(this);
             const data = {
                 jenis: formData.get('jenis'),
-                jumlah: parseInt(formData.get('jumlah')),
+                jumlah: parseInt(formData.get('jumlah').replace(/\D/g, '')),
                 keterangan: formData.get('keterangan'),
                 tanggal: formData.get('tanggal')
             };
