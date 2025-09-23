@@ -154,6 +154,7 @@ if (isset($_GET['action'])) {
     <meta charset="utf-8" />
     <title>Point of Sale - POS</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="alert.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* CSS untuk tabel sticky */
@@ -603,12 +604,20 @@ if (isset($_GET['action'])) {
         function kosongkanKeranjang() {
             if (keranjang.length === 0) return;
 
-            if (confirm('Apakah Anda yakin ingin mengosongkan keranjang?')) {
-                keranjang = [];
-                perbaruiKeranjang();
-                hapusKeranjangDariPenyimpanan();
-            }
+            showConfirm(
+                'Apakah Anda yakin ingin mengosongkan keranjang?',
+                () => { // Callback OK
+                    keranjang = [];
+                    perbaruiKeranjang();
+                    hapusKeranjangDariPenyimpanan();
+                    showToast('Keranjang berhasil dikosongkan', 'success');
+                },
+                () => { // Callback Cancel
+                    showToast('Aksi dibatalkan', 'info');
+                }
+            );
         }
+
 
         // Menghitung kembalian
         function hitungKembalian() {
@@ -630,7 +639,7 @@ if (isset($_GET['action'])) {
         // Memproses pembayaran
         async function prosesPembayaran() {
             if (keranjang.length === 0) {
-                alert('Keranjang masih kosong!');
+                showToast('Keranjang masih kosong!', 'error');
                 return;
             }
 
@@ -640,60 +649,71 @@ if (isset($_GET['action'])) {
             const hutang = kembalian < 0 ? Math.abs(kembalian) : 0;
 
             if (namaPembeli.trim() === '') {
-                alert('Mohon isi nama pembeli terlebih dahulu!');
+                showToast('Mohon isi nama pembeli terlebih dahulu!', 'error');
                 document.getElementById('namaPembeli').focus();
                 return;
             }
 
-            if (bayar < grandTotal && !confirm(`Pembayaran kurang Rp ${hutang.toLocaleString('id-ID')}. Apakah ingin melanjutkan dengan hutang?`)) {
-                return;
+            if (bayar < grandTotal) {
+                showConfirm(
+                    `Pembayaran kurang Rp ${hutang.toLocaleString('id-ID')}. Apakah ingin melanjutkan dengan hutang?`,
+                    async () => { // Callback OK
+                            await kirimTransaksi();
+                        },
+                        () => { // Callback Cancel
+                            showToast('Aksi pembayaran dibatalkan', 'info');
+                        }
+                );
+            } else {
+                await kirimTransaksi();
             }
 
-            try {
-                // Di fungsi prosesPembayaran(), ubah bagian pengiriman data
-                const response = await fetch('?action=simpan_penjualan', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        items: keranjang,
-                        total: total,
-                        diskon: diskon,
-                        grandTotal: grandTotal,
-                        bayar: bayar,
-                        kembalian: kembalian >= 0 ? kembalian : 0,
-                        hutang: hutang,
-                        nama_pembeli: namaPembeli
-                    })
-                });
+            async function kirimTransaksi() {
+                try {
+                    const response = await fetch('?action=simpan_penjualan', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            items: keranjang,
+                            total: total,
+                            diskon: diskon,
+                            grandTotal: grandTotal,
+                            bayar: bayar,
+                            kembalian: kembalian >= 0 ? kembalian : 0,
+                            hutang: hutang,
+                            nama_pembeli: namaPembeli
+                        })
+                    });
 
-                const result = await response.json();
+                    const result = await response.json();
 
-                if (result.success) {
-                    if (result.hutang) {
-                        alert(`Transaksi berhasil! Tercatat hutang sebesar Rp ${hutang.toLocaleString('id-ID')}`);
+                    if (result.success) {
+                        if (result.hutang) {
+                            showToast(`Transaksi berhasil! Tercatat hutang sebesar Rp ${hutang.toLocaleString('id-ID')}`, 'warning');
+                        } else {
+                            showToast('Transaksi berhasil!', 'success');
+                        }
+
+                        const snapshotKeranjang = JSON.parse(JSON.stringify(keranjang));
+                        tampilkanStruk(snapshotKeranjang, total, diskon, grandTotal, bayar, kembalian, hutang, namaPembeli);
+
+                        hapusKeranjangDariPenyimpanan();
+                        keranjang = [];
+                        perbaruiKeranjang();
+                        document.getElementById('bayar').value = '';
+                        document.getElementById('diskon').value = '0';
+                        document.getElementById('namaPembeli').value = '';
+                        document.getElementById('kembalian').value = '';
+                        document.getElementById('hutangContainer').classList.add('hidden');
                     } else {
-                        alert('Transaksi berhasil!');
+                        showToast('Gagal memproses pembayaran: ' + (result.error || 'Unknown error'), 'error');
                     }
-
-                    const snapshotKeranjang = JSON.parse(JSON.stringify(keranjang));
-                    tampilkanStruk(snapshotKeranjang, total, diskon, grandTotal, bayar, kembalian, hutang, namaPembeli);
-
-                    hapusKeranjangDariPenyimpanan();
-                    keranjang = [];
-                    perbaruiKeranjang();
-                    document.getElementById('bayar').value = '';
-                    document.getElementById('diskon').value = '0';
-                    document.getElementById('namaPembeli').value = '';
-                    document.getElementById('kembalian').value = '';
-                    document.getElementById('hutangContainer').classList.add('hidden');
-                } else {
-                    alert('Gagal memproses pembayaran: ' + (result.error || 'Unknown error'));
+                } catch (error) {
+                    console.error('Error:', error);
+                    showToast('Terjadi kesalahan: ' + error.message, 'error');
                 }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Terjadi kesalahan: ' + error.message);
             }
         }
 
