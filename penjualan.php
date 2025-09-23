@@ -48,47 +48,69 @@ if (isset($_GET['action'])) {
             $input['id'] = time();
             $input['waktu'] = date('Y-m-d H:i:s');
 
-            // Hitung laba untuk setiap item
             $totalLaba = 0;
-            foreach ($input['items'] as &$item) {
+            $totalHarga = 0;
+
+            // Gabungkan item duplikat berdasarkan id + jenisHarga
+            $mergedItems = [];
+            foreach ($input['items'] as $item) {
+                $key = $item['id'] . '_' . $item['jenisHarga'];
+                if (isset($mergedItems[$key])) {
+                    $mergedItems[$key]['qty'] += $item['qty'];
+                } else {
+                    $mergedItems[$key] = $item;
+                }
+            }
+
+            $input['items'] = []; // reset items, akan diisi hasil merge & hitung laba
+
+            foreach ($mergedItems as $item) {
                 foreach ($barang as $b) {
                     if ($b['id'] == $item['id']) {
-                        // Cari harga modal berdasarkan jenis harga
-                        $hargaModal = 0;
-                        foreach ($b['satuanHarga'] as $harga) {
-                            // PERBAIKAN: Gunakan 'jenisHarga' bukan 'jenisHarga'
-                            if ($item['jenisHarga'] === 'ecer') {
-                                $hargaModal = $harga['hargaModal'] ?? 0;
-                                break; // Tambahkan break setelah menemukan
-                            } else if ($item['jenisHarga'] === 'grosir') {
-                                $hargaModal = $harga['hargaModal'] ?? 0;
-                                break; // Tambahkan break setelah menemukan
-                            }
+                        $modalDasar = $b['satuanHarga'][0]['hargaModal'] ?? 0;
+
+                        // Tentukan harga sesuai jenis
+                        if ($item['jenisHarga'] === 'ecer') {
+                            $item['harga'] = $b['satuanHarga'][0]['hargaEcer'] ?? 0;
+                        } else {
+                            $item['harga'] = $b['satuanHarga'][0]['hargaGrosir'] ?? 0;
                         }
 
-                        $item['hargaModal'] = $hargaModal;
-                        $item['laba'] = ($item['harga'] - $hargaModal) * $item['qty'];
+                        $item['hargaModal'] = $modalDasar;
+                        $item['laba'] = ($item['harga'] - $modalDasar) * $item['qty'];
+
                         $totalLaba += $item['laba'];
+                        $totalHarga += $item['harga'] * $item['qty'];
+
+                        // Simpan item ke input
+                        $input['items'][] = $item;
                         break;
                     }
                 }
             }
 
+            // Hitung grand total berdasarkan diskon
+            $diskon = $input['diskon'] ?? 0;
+            $grandTotal = max(0, $totalHarga - $diskon);
+
+            $input['total'] = $totalHarga;
+            $input['grandTotal'] = $grandTotal;
             $input['totalLaba'] = $totalLaba;
+
             $penjualan[] = $input;
 
-            // Update stok barang
+            // Update stok barang dengan cek stok
             foreach ($input['items'] as $item) {
                 foreach ($barang as &$b) {
                     if ($b['id'] == $item['id']) {
-                        $b['stok'] -= $item['qty'];
+                        $b['stok'] = max(0, $b['stok'] - $item['qty']);
                         break;
                     }
                 }
             }
 
-            // Jika ada hutang, simpan ke data hutang
-            if ($input['hutang'] > 0) {
+            // Simpan hutang jika ada
+            if (($input['hutang'] ?? 0) > 0) {
                 $hutang[] = [
                     'id' => 'H' . time(),
                     'id_penjualan' => $input['id'],
@@ -104,15 +126,18 @@ if (isset($_GET['action'])) {
             file_put_contents($barangFile, json_encode($barang, JSON_PRETTY_PRINT));
             file_put_contents($hutangFile, json_encode($hutang, JSON_PRETTY_PRINT));
 
-            // PERBAIKAN: Tambahkan laba dalam response
             header('Content-Type: application/json');
             echo json_encode([
                 "success" => true,
                 "id" => $input['id'],
-                "hutang" => $input['hutang'] > 0,
-                "laba" => $totalLaba // Tambahkan informasi laba
+                "hutang" => ($input['hutang'] ?? 0) > 0,
+                "total" => $totalHarga,
+                "grandTotal" => $grandTotal,
+                "laba" => $totalLaba
             ]);
             exit;
+
+
 
         case 'riwayat_penjualan':
             header('Content-Type: application/json');
@@ -652,7 +677,9 @@ if (isset($_GET['action'])) {
                         alert('Transaksi berhasil!');
                     }
 
-                    tampilkanStruk(total, diskon, grandTotal, bayar, kembalian, hutang, namaPembeli);
+                    const snapshotKeranjang = JSON.parse(JSON.stringify(keranjang));
+                    tampilkanStruk(snapshotKeranjang, total, diskon, grandTotal, bayar, kembalian, hutang, namaPembeli);
+
                     hapusKeranjangDariPenyimpanan();
                     keranjang = [];
                     perbaruiKeranjang();
@@ -671,11 +698,11 @@ if (isset($_GET['action'])) {
         }
 
         // Menampilkan struk
-        function tampilkanStruk(total, diskon, grandTotal, bayar, kembalian, hutang, namaPembeli) {
+        function tampilkanStruk(items, total, diskon, grandTotal, bayar, kembalian, hutang, namaPembeli) {
             const strukContent = document.getElementById('strukContent');
             const now = new Date();
 
-            // Format waktu GMT+7 (WIB)
+            // format waktu
             const options = {
                 timeZone: 'Asia/Jakarta',
                 year: 'numeric',
@@ -685,7 +712,6 @@ if (isset($_GET['action'])) {
                 minute: '2-digit',
                 second: '2-digit'
             };
-
             const waktuJakarta = now.toLocaleString('id-ID', options);
 
             let html = `
@@ -698,7 +724,7 @@ if (isset($_GET['action'])) {
         <div class="mb-3 max-h-60 overflow-y-auto">
     `;
 
-            keranjang.forEach(item => {
+            items.forEach(item => {
                 const subtotal = item.harga * item.qty;
                 html += `
             <div class="flex justify-between text-sm py-1">
@@ -757,6 +783,7 @@ if (isset($_GET['action'])) {
             strukContent.innerHTML = html;
             document.getElementById('modalStruk').classList.remove('hidden');
         }
+
 
         // Menutup modal struk
         function tutupStruk() {

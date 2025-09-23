@@ -2,6 +2,24 @@
 // history.php
 date_default_timezone_set('Asia/Jakarta'); // SET TIMEZONE KE GMT+7
 
+require "struk_template.php";
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tes_printer']) && isset($_POST['transaksi'])) {
+    $transaksi = json_decode($_POST['transaksi'], true);
+
+    $items = $transaksi['items'] ?? [];
+    $nama_pelanggan = $transaksi['nama_pembeli'] ?? null;
+    $waktu = $transaksi['waktu'] ?? null;
+    $bayar = $transaksi['bayar'] ?? null;
+    $hutang = $transaksi['hutang'] ?? 0;
+
+    $settings = json_decode(file_get_contents(__DIR__ . '/data/setting.json'), true);
+
+    $result = cetakStruk($items, $settings, $nama_pelanggan, $waktu, $bayar, $hutang);
+    echo json_encode($result);
+    exit;
+}
+
 $penjualanFile = __DIR__ . "/data/penjualan.json";
 
 // Pastikan file JSON ada
@@ -38,17 +56,15 @@ if (isset($_GET['action'])) {
                 exit;
             }
 
-            // Tambahkan waktu untuk mencakup seluruh hari
-            $startDateTime = $startDate . ' 00:00:00';
-            $endDateTime = $endDate . ' 23:59:59';
+            $startTime = strtotime($startDate . ' 00:00:00');
+            $endTime = strtotime($endDate . ' 23:59:59');
 
             $deletedCount = 0;
             $filteredPenjualan = [];
 
             foreach ($penjualan as $transaction) {
-                $transactionDate = $transaction['waktu'];
-
-                if ($transactionDate >= $startDateTime && $transactionDate <= $endDateTime) {
+                $transactionTime = strtotime($transaction['waktu']);
+                if ($transactionTime >= $startTime && $transactionTime <= $endTime) {
                     $deletedCount++;
                 } else {
                     $filteredPenjualan[] = $transaction;
@@ -62,6 +78,7 @@ if (isset($_GET['action'])) {
 }
 ?>
 
+
 <!DOCTYPE html>
 <html lang="id">
 
@@ -70,6 +87,7 @@ if (isset($_GET['action'])) {
     <title>History Transaksi - POS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="alert.js"></script>
     <style>
         /* CSS untuk tabel sticky */
         .table-container {
@@ -91,6 +109,7 @@ if (isset($_GET['action'])) {
             padding: 0.75rem;
             font-weight: 600;
         }
+
         #detailContent .max-h-60 {
             max-height: 15rem;
         }
@@ -101,6 +120,7 @@ if (isset($_GET['action'])) {
             background-color: #f3f4f6;
             z-index: 10;
         }
+
         #transactionTable {
             width: 100%;
             border-collapse: collapse;
@@ -221,6 +241,9 @@ if (isset($_GET['action'])) {
                     <h3 class="text-xl font-semibold mb-4">Detail Transaksi</h3>
                     <div id="detailContent"></div>
                     <div class="flex justify-end mt-4">
+                        <button onclick="cetakStrukDetail()" class="bg-green-300 text-white-700 px-4 py-2 rounded-md hover:bg-green-400 mr-2">
+                            <i class="fas fa-print mr-1"></i> Cetak Struk
+                        </button>
                         <button onclick="tutupModalDetail()" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 mr-2">
                             Tutup
                         </button>
@@ -261,9 +284,6 @@ if (isset($_GET['action'])) {
         // Fungsi untuk format tanggal Indonesia dengan GMT+7
         function formatTanggalIndonesia(dateString) {
             const date = new Date(dateString);
-            // Tambahkan 7 jam untuk GMT+7
-            date.setHours(date.getHours() + 7);
-
             return date.toLocaleDateString('id-ID', {
                 day: '2-digit',
                 month: '2-digit',
@@ -289,8 +309,8 @@ if (isset($_GET['action'])) {
             } catch (error) {
                 console.error('Error:', error);
                 document.getElementById('daftarTransaksi').innerHTML = `
-                <tr id="emptyTransaction"><td colspan="7" class="p-4 text-center text-red-500">Gagal memuat data transaksi</td></tr>
-            `;
+            <tr id="emptyTransaction"><td colspan="8" class="p-4 text-center text-red-500">Gagal memuat data transaksi</td></tr>
+        `;
             }
         }
 
@@ -328,31 +348,21 @@ if (isset($_GET['action'])) {
         // Tampilkan history transaksi
         function tampilkanHistoryTransaksi(transaksi) {
             const container = document.getElementById('daftarTransaksi');
-
             if (transaksi.length === 0) {
                 container.innerHTML = `
-        <tr id="emptyTransaction"><td colspan="8" class="p-4 text-center text-gray-500">Tidak ada data transaksi</td></tr>
+            <tr id="emptyTransaction"><td colspan="8" class="p-4 text-center text-gray-500">Tidak ada data transaksi</td></tr>
         `;
                 return;
             }
 
-            // Urutkan dari yang terbaru
             transaksi.sort((a, b) => new Date(b.waktu) - new Date(a.waktu));
 
             let html = '';
             transaksi.forEach((item, index) => {
-                // Find the original index in the global currentTransactions array
-                const originalIndex = currentTransactions.findIndex(t =>
-                    t.waktu === item.waktu &&
-                    t.nama_pembeli === item.nama_pembeli &&
-                    t.grandTotal === item.grandTotal
-                );
-
                 const status = item.hutang > 0 ?
                     '<span class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded">Hutang</span>' :
                     '<span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">Lunas</span>';
 
-                // Tampilkan laba jika ada, jika tidak tampilkan 0
                 const laba = item.totalLaba !== undefined ? formatRupiah(item.totalLaba) : formatRupiah(0);
 
                 html += `
@@ -365,10 +375,10 @@ if (isset($_GET['action'])) {
             <td class="p-3 font-medium text-green-600">${laba}</td>
             <td class="p-3">${status}</td>
             <td class="p-3">
-                <button onclick="lihatDetail(${originalIndex})" class="text-blue-500 hover:text-blue-700 mr-2">
+                <button onclick="lihatDetail(${index})" class="text-blue-500 hover:text-blue-700 mr-2">
                     <i class="fas fa-eye"></i> Detail
                 </button>
-                <button onclick="hapusTransaksi(${originalIndex})" class="text-red-500 hover:text-red-700">
+                <button onclick="hapusTransaksi(${item._index})" class="text-red-500 hover:text-red-700">
                     <i class="fas fa-trash-alt"></i> Hapus
                 </button>
             </td>
@@ -464,7 +474,10 @@ if (isset($_GET['action'])) {
 
         // Lihat detail transaksi
         function lihatDetail(index) {
+            index = parseInt(index);
             const transaksi = currentTransactions[index];
+
+            document.getElementById('detailContent').dataset.index = index;
 
             // Tampilkan laba jika ada, jika tidak tampilkan 0
             const totalLaba = transaksi.totalLaba !== undefined ? transaksi.totalLaba : 0;
@@ -545,6 +558,30 @@ if (isset($_GET['action'])) {
 
             muatHistoryTransaksi();
         });
+
+        function cetakStrukDetail() {
+            const index = document.getElementById('detailContent').dataset.index;
+            const transaksi = currentTransactions[index];
+
+            const formData = new FormData();
+            formData.append('tes_printer', '1');
+            formData.append('transaksi', JSON.stringify(transaksi));
+
+            // POST ke history.php sendiri
+            fetch('', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showToast('Struk berhasil dicetak!', 'success', 3000);
+                    } else {
+                        showToast('Gagal mencetak: ' + data.message, 'error', 5000);
+                    }
+                })
+                .catch(err => showToast('Terjadi kesalahan saat koneksi ke printer', 'error', 5000));
+        }
     </script>
 </body>
 
