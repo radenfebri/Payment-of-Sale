@@ -5,8 +5,9 @@
         "nama": "Pelanggan",
         "jumlah": 11500,
         "tanggal": "2025-09-23 12:02:31",
-        "status": "belum lunas",
-        "tanggal_bayar": null
+        "status": "lunas",
+        "tanggal_bayar": "2025-09-23 13:49:51",
+        "jumlah_awal": 11500
     },
     {
         "id": "H1758604062",
@@ -15,7 +16,8 @@
         "jumlah": 3000,
         "tanggal": "2025-09-23 12:07:42",
         "status": "belum lunas",
-        "tanggal_bayar": null
+        "tanggal_bayar": null,
+        "jumlah_awal": 3000
     },
     {
         "id": "H1758604132",
@@ -24,7 +26,8 @@
         "jumlah": 6000,
         "tanggal": "2025-09-23 12:08:52",
         "status": "belum lunas",
-        "tanggal_bayar": null
+        "tanggal_bayar": null,
+        "jumlah_awal": 6000
     },
     {
         "id": "H1758604274",
@@ -33,7 +36,8 @@
         "jumlah": 3000,
         "tanggal": "2025-09-23 12:11:14",
         "status": "belum lunas",
-        "tanggal_bayar": null
+        "tanggal_bayar": null,
+        "jumlah_awal": 3000
     },
     {
         "id": "H1758605133",
@@ -41,6 +45,156 @@
         "nama": "Pelanggan",
         "jumlah": 24000,
         "tanggal": "2025-09-23 12:25:33",
+        "status": "belum lunas",
+        "tanggal_bayar": null,
+        "jumlah_awal": 24000
+    },
+    {
+        "id": "H1758607428",
+        "id_penjualan": 1758607428,
+        "nama": "Pelanggan",
+        "jumlah": 30300,
+        "tanggal": "2025-09-23 13:03:48",
+        "status": "belum lunas",
+        "tanggal_bayar": null,
+        "jumlah_awal": 30300
+    },
+    {
+        "id": "H1758607780",
+        "id_penjualan": 1758607780,
+        "nama": "Pelanggan",
+        "jumlah": 12000,
+        "tanggal": "2025-09-23 13:09:40",
+        "status": "belum lunas",
+        "tanggal_bayar": null,
+        "jumlah_awal": 12000
+    },
+    {
+        "id": "H1758607919",
+        "id_penjualan": 1758607919,
+        "nama": "Pelanggan",
+        "jumlah": 3000,
+        "tanggal": "2025-09-23 13:11:59",
+        "status": "belum lunas",
+        "tanggal_bayar": null,
+        "jumlah_awal": 3000
+    },
+    {
+        "id": "H1758608232",
+        "id_penjualan": 1758608232,
+        "nama": "Pelanggan",
+        "jumlah": 24000,
+        "tanggal": "2025-09-23 13:17:12",
+        "status": "belum lunas",
+        "tanggal_bayar": null,
+        "jumlah_awal": 24000
+    },
+    {
+        "id": "H1758608322",
+        "id_penjualan": 1758608322,
+        "nama": "Pelanggan",
+        "jumlah": 24000,
+        "tanggal": "2025-09-23 13:18:42",
+        "status": "belum lunas",
+        "tanggal_bayar": null,
+        "jumlah_awal": 24000
+    },
+    {
+        "id": "H1758608469",
+        "id_penjualan": 1758608469,
+        "nama": "Pelanggan",
+        "jumlah": 2800,
+        "tanggal": "2025-09-23 13:21:09",
+        "status": "belum lunas",
+        "tanggal_bayar": null,
+        "jumlah_awal": 2800
+    },
+    {
+        "id": "H1758608699",
+        "id_penjualan": 1758608699,
+        "nama": "Pelanggan",
+        "jumlah": 3000,
+        "tanggal": "2025-09-23 13:24:59",
+        "status": "belum lunas",
+        "tanggal_bayar": null,
+        "jumlah_awal": 3000
+    },
+    {
+        "id": "H1758608740",
+        "id_penjualan": 1758608740,
+        "nama": "Pelanggan",
+        "jumlah": 47600,
+        "tanggal": "2025-09-23 13:25:40",
+        "status": "belum lunas",
+        "tanggal_bayar": null,
+        "jumlah_awal": 47600
+    },
+    {
+        "id": "H1758609431",
+        "id_penjualan": 1758609431,
+        "nama": "Pelanggan",
+        "jumlah": 23000,
+        "tanggal": "2025-09-23 13:37:11",
+        "status": "belum lunas",
+        "tanggal_bayar": null,
+        "jumlah_awal": 23000
+    },
+    {
+        "id": "H1758609438",
+        "id_penjualan": 1758609438,
+        "nama": "Pelanggan",
+        "jumlah": 23000,
+        "tanggal": "2025-09-23 13:37:18",
+        "status": "belum lunas",
+        "tanggal_bayar": null,
+        "jumlah_awal": 23000
+    },
+    {
+        "id": "H1758609682",
+        "id_penjualan": 1758609682,
+        "nama": "Pelanggan",
+        "jumlah": 23000,
+        "tanggal": "2025-09-23 13:41:22",
+        "status": "belum lunas",
+        "tanggal_bayar": null,
+        "jumlah_awal": 23000
+    },
+    {
+        "id": "H1758609687",
+        "id_penjualan": 1758609687,
+        "nama": "Pelanggan",
+        "jumlah": 23000,
+        "tanggal": "2025-09-23 13:41:27",
+        "status": "belum lunas",
+        "tanggal_bayar": null,
+        "jumlah_awal": 23000
+    },
+    {
+        "id": "H1758609717",
+        "id_penjualan": 1758609717,
+        "nama": "Pelanggan",
+        "jumlah": 30300,
+        "tanggal": "2025-09-23 13:41:57",
+        "status": "belum lunas",
+        "tanggal_bayar": null,
+        "jumlah_awal": 30300
+    },
+    {
+        "id": "H1758609747",
+        "id_penjualan": 1758609747,
+        "nama": "Jungkok",
+        "jumlah": 500,
+        "tanggal": "2025-09-23 13:42:27",
+        "status": "belum lunas",
+        "tanggal_bayar": null,
+        "jumlah_awal": 500
+    },
+    {
+        "id": "H1758610271",
+        "id_penjualan": 1758610271,
+        "nama": "Pelanggan",
+        "jumlah": 11500,
+        "tanggal": "2025-09-23 13:51:11",
         "status": "belum lunas",
         "tanggal_bayar": null
     }

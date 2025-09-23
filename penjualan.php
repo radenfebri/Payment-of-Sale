@@ -1,7 +1,36 @@
 <?php
-// ======== BAGIAN PHP: Handle aksi untuk penjualan ========== 
 header("Cache-Control: no-cache, must-revalidate");
 header("Pragma: no-cache");
+
+require "struk_template.php";
+
+$settings = json_decode(file_get_contents(__DIR__ . '/data/setting.json'), true);
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tes_printer']) && isset($_POST['transaksi'])) {
+    $transaksi = json_decode($_POST['transaksi'], true);
+
+    $items = $transaksi['items'] ?? [];
+    $nama_pelanggan = $transaksi['namaPembeli'] ?? 'Pelanggan';
+    $waktu = $transaksi['waktu'] ?? date('Y-m-d H:i:s');
+    $bayar = $transaksi['bayar'] ?? 0;
+    $hutang = $transaksi['hutang'] ?? 0;
+
+    try {
+        $cetak = cetakStruk($items, $settings, $nama_pelanggan, $waktu, $bayar, $hutang);
+
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'Struk berhasil dikirim ke printer',
+            'data' => $cetak
+        ]);
+    } catch (Exception $e) {
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Gagal mencetak struk: ' . $e->getMessage()
+        ]);
+    }
+    exit;
+}
 
 // Set timezone ke GMT+7
 date_default_timezone_set('Asia/Jakarta');
@@ -343,6 +372,8 @@ if (isset($_GET['action'])) {
         let total = 0;
         let grandTotal = 0;
         let diskon = 0;
+        let lastTransaction = null;
+        const settings = <?= json_encode($settings) ?>;
 
         // Fungsi untuk memuat keranjang dari localStorage
         function muatKeranjangDariPenyimpanan() {
@@ -654,20 +685,7 @@ if (isset($_GET['action'])) {
                 return;
             }
 
-            if (bayar < grandTotal) {
-                showConfirm(
-                    `Pembayaran kurang Rp ${hutang.toLocaleString('id-ID')}. Apakah ingin melanjutkan dengan hutang?`,
-                    async () => { // Callback OK
-                            await kirimTransaksi();
-                        },
-                        () => { // Callback Cancel
-                            showToast('Aksi pembayaran dibatalkan', 'info');
-                        }
-                );
-            } else {
-                await kirimTransaksi();
-            }
-
+            // Fungsi internal untuk kirim transaksi
             async function kirimTransaksi() {
                 try {
                     const response = await fetch('?action=simpan_penjualan', {
@@ -696,9 +714,30 @@ if (isset($_GET['action'])) {
                             showToast('Transaksi berhasil!', 'success');
                         }
 
-                        const snapshotKeranjang = JSON.parse(JSON.stringify(keranjang));
-                        tampilkanStruk(snapshotKeranjang, total, diskon, grandTotal, bayar, kembalian, hutang, namaPembeli);
+                        // SIMPAN TRANSAKSI TERAKHIR UNTUK CETAK - PERBAIKAN DI SINI
+                        lastTransaction = {
+                            items: JSON.parse(JSON.stringify(keranjang)), // Deep copy
+                            total: total,
+                            diskon: diskon,
+                            grandTotal: grandTotal,
+                            bayar: bayar,
+                            kembalian: kembalian >= 0 ? kembalian : 0,
+                            hutang: hutang,
+                            namaPembeli: namaPembeli,
+                            waktu: new Date().toLocaleString('id-ID', {
+                                timeZone: 'Asia/Jakarta',
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit'
+                            })
+                        };
 
+                        tampilkanStruk(lastTransaction.items, total, diskon, grandTotal, bayar, kembalian, hutang, namaPembeli);
+
+                        // Reset form
                         hapusKeranjangDariPenyimpanan();
                         keranjang = [];
                         perbaruiKeranjang();
@@ -715,7 +754,71 @@ if (isset($_GET['action'])) {
                     showToast('Terjadi kesalahan: ' + error.message, 'error');
                 }
             }
+
+            // Konfirmasi jika bayar kurang
+            if (bayar < grandTotal) {
+                showConfirm(
+                    `Pembayaran kurang Rp ${hutang.toLocaleString('id-ID')}. Apakah ingin melanjutkan dengan hutang?`,
+                    async () => {
+                            await kirimTransaksi();
+                        },
+                        () => {
+                            showToast('Aksi pembayaran dibatalkan', 'info');
+                        }
+                );
+            } else {
+                await kirimTransaksi();
+            }
         }
+
+        async function kirimTransaksi() {
+            try {
+                const response = await fetch('?action=simpan_penjualan', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        items: keranjang,
+                        total: total,
+                        diskon: diskon,
+                        grandTotal: grandTotal,
+                        bayar: bayar,
+                        kembalian: kembalian >= 0 ? kembalian : 0,
+                        hutang: hutang,
+                        nama_pembeli: namaPembeli
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    if (result.hutang) {
+                        showToast(`Transaksi berhasil! Tercatat hutang sebesar Rp ${hutang.toLocaleString('id-ID')}`, 'warning');
+                    } else {
+                        showToast('Transaksi berhasil!', 'success');
+                    }
+
+                    const snapshotKeranjang = JSON.parse(JSON.stringify(keranjang));
+                    tampilkanStruk(snapshotKeranjang, total, diskon, grandTotal, bayar, kembalian, hutang, namaPembeli);
+
+                    hapusKeranjangDariPenyimpanan();
+                    keranjang = [];
+                    perbaruiKeranjang();
+                    document.getElementById('bayar').value = '';
+                    document.getElementById('diskon').value = '0';
+                    document.getElementById('namaPembeli').value = '';
+                    document.getElementById('kembalian').value = '';
+                    document.getElementById('hutangContainer').classList.add('hidden');
+                } else {
+                    showToast('Gagal memproses pembayaran: ' + (result.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Terjadi kesalahan: ' + error.message, 'error');
+            }
+        }
+
 
         // Menampilkan struk
         function tampilkanStruk(items, total, diskon, grandTotal, bayar, kembalian, hutang, namaPembeli) {
@@ -736,8 +839,10 @@ if (isset($_GET['action'])) {
 
             let html = `
         <div class="border-b pb-2 mb-2">
-            <p class="text-center font-semibold">TOKO MUDA YAKIN</p>
+           <p class="text-center font-semibold">${settings.nama_toko}</p>
             <p class="text-center text-sm">${waktuJakarta}</p>
+            <p class="text-center text-sm">${settings.alamat}</p>
+            <p class="text-center text-sm">${settings.telepon}</p>
             <p class="text-center text-sm mt-1"><i class="fas fa-user mr-1"></i> ${namaPembeli}</p>
         </div>
         
@@ -796,13 +901,19 @@ if (isset($_GET['action'])) {
         </div>
         
         <div class="text-center mt-4 pt-2 border-t text-sm text-gray-600">
-            <p><i class="fas fa-thumbs-up mr-1"></i> Terima kasih atas kunjungannya</p>
+            <p>${settings.footer || 'Terima kasih atas kunjungannya'}</p>
         </div>
     `;
 
             strukContent.innerHTML = html;
             document.getElementById('modalStruk').classList.remove('hidden');
+
+            // === AUTO PRINT ===
+            if (settings.auto_print) {
+                cetakStruk(); // langsung panggil fungsi cetak
+            }
         }
+
 
 
         // Menutup modal struk
@@ -812,35 +923,39 @@ if (isset($_GET['action'])) {
 
         // Mencetak struk
         function cetakStruk() {
-            const content = document.getElementById('strukContent').innerHTML;
-            const printWindow = window.open('', '_blank');
+            if (!lastTransaction) {
+                showToast('Tidak ada transaksi terakhir untuk dicetak!', 'error');
+                return;
+            }
 
-            printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Cetak Struk</title>
-            <style>
-                body { font-family: Arial, sans-serif; font-size: 14px; padding: 15px; }
-                .center { text-align: center; }
-                .flex { display: flex; }
-                .justify-between { justify-content: space-between; }
-                .border-b { border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 5px; }
-                .border-t { border-top: 1px dashed #000; padding-top: 5px; margin-top: 5px; }
-                .mb-2 { margin-bottom: 10px; }
-                .mb-3 { margin-bottom: 15px; }
-                .mt-4 { margin-top: 20px; }
-                .pt-2 { padding-top: 10px; }
-                .pb-2 { padding-bottom: 10px; }
-            </style>
-        </head>
-        <body onload="window.print(); window.close();">
-            ${content}
-        </body>
-        </html>
-    `);
+            console.log('Data yang dikirim ke printer:', lastTransaction); // Debug
 
-            printWindow.document.close();
+            const formData = new FormData();
+            formData.append('tes_printer', '1');
+            formData.append('transaksi', JSON.stringify(lastTransaction));
+
+            fetch(window.location.href, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Response dari server:', data); // Debug
+                    if (data.status === 'success') {
+                        showToast('Struk berhasil dikirim ke printer!', 'success', 3000);
+                    } else {
+                        showToast('Gagal mencetak: ' + (data.message || 'Unknown error'), 'error', 5000);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error saat mencetak:', error);
+                    showToast('Terjadi kesalahan saat koneksi ke server: ' + error.message, 'error', 5000);
+                });
         }
     </script>
 
