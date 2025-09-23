@@ -98,6 +98,7 @@ if (isset($_GET['action'])) {
   <meta charset="utf-8" />
   <title>Manajemen Barang - POS</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="alert.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     .modal {
@@ -673,7 +674,7 @@ if (isset($_GET['action'])) {
         let result = await res.json();
 
         if (result.success) {
-          alert(isEdit ? "Barang berhasil diupdate!" : "Barang berhasil ditambahkan!");
+          showToast(isEdit ? "Barang berhasil diupdate!" : "Barang berhasil ditambahkan!", "success");
 
           if (!isEdit) {
             // Jika menambah barang baru, reset form untuk input berikutnya
@@ -686,13 +687,14 @@ if (isset($_GET['action'])) {
 
           loadBarang(); // Memuat ulang data barang
         } else {
-          alert("Gagal menyimpan data: " + (result.error || "Unknown error"));
+          showToast("Gagal menyimpan data: " + (result.error || "Unknown error"), "error");
         }
       } catch (error) {
         console.error("Error saving barang:", error);
-        alert("Error: " + error.message);
+        showToast("Error: " + error.message, "error");
       }
     });
+
 
     // Reset form
     function resetForm() {
@@ -712,31 +714,39 @@ if (isset($_GET['action'])) {
 
     // Menangani penghapusan barang
     async function hapusBarang(id) {
-      if (!confirm("Yakin hapus barang ini?")) return;
+      showConfirm(
+        "Yakin hapus barang ini?",
+        async () => { // Callback OK
+            try {
+              let res = await fetch("?action=delete", {
+                method: "POST",
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  id: parseInt(id)
+                })
+              });
 
-      try {
-        let res = await fetch("?action=delete", {
-          method: "POST",
-          headers: {
-            'Content-Type': 'application/json'
+              let result = await res.json();
+
+              if (result.success) {
+                showToast("Barang berhasil dihapus!", "success");
+                loadBarang(); // Muat ulang data barang
+              } else {
+                showToast("Gagal menghapus barang: " + (result.error || "Unknown error"), "error");
+              }
+            } catch (error) {
+              console.error("Error deleting barang:", error);
+              showToast("Error: " + error.message, "error");
+            }
           },
-          body: JSON.stringify({
-            id: parseInt(id)
-          })
-        });
-
-        let result = await res.json();
-        if (result.success) {
-          alert("Barang berhasil dihapus");
-          loadBarang(); // Memuat ulang data barang
-        } else {
-          alert("Gagal menghapus barang: " + (result.error || "Unknown error"));
-        }
-      } catch (error) {
-        console.error("Error deleting barang:", error);
-        alert("Error: " + error.message);
-      }
+          () => { // Callback Cancel
+            showToast("Aksi dibatalkan", "info");
+          }
+      );
     }
+
 
     // Event listener untuk perubahan satuan
     document.getElementById("satuan").addEventListener("change", function() {

@@ -299,6 +299,7 @@ if (ob_get_level()) ob_clean();
     <meta charset="utf-8" />
     <title>Kelola Piutang - POS</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="alert.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .alert {
@@ -1040,43 +1041,47 @@ if (ob_get_level()) ob_clean();
         }
 
         // Update status hutang (lunas/belum lunas)
-        async function updateStatus(id, status) {
-            if (!confirm(`Apakah Anda yakin ingin mengubah status hutang ini menjadi ${status === 'lunas' ? 'lunas' : 'belum lunas'}?`)) {
-                return;
-            }
+        function updateStatus(id, status) {
+            showConfirm(
+                `Apakah Anda yakin ingin mengubah status hutang ini menjadi ${status === 'lunas' ? 'lunas' : 'belum lunas'}?`,
+                async () => { // callback OK bisa async
+                        try {
+                            const response = await fetch('?action=update_status_hutang', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    id,
+                                    status
+                                })
+                            });
 
-            try {
-                const response = await fetch('?action=update_status_hutang', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
+                            const contentType = response.headers.get('content-type');
+                            if (!contentType || !contentType.includes('application/json')) {
+                                const text = await response.text();
+                                throw new Error('Response dari server bukan JSON: ' + text.substring(0, 100));
+                            }
+
+                            const result = await response.json();
+
+                            if (result.success) {
+                                showToast('Status berhasil diubah!', 'success');
+                                muatDataHutang();
+                            } else {
+                                showToast('Gagal mengubah status!', 'error');
+                            }
+                        } catch (error) {
+                            console.error(error);
+                            showToast('Terjadi kesalahan: ' + error.message, 'error');
+                        }
                     },
-                    body: JSON.stringify({
-                        id: id,
-                        status: status
-                    })
-                });
-
-                // Validasi response JSON
-                const contentType = response.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    const text = await response.text();
-                    throw new Error('Response dari server bukan JSON: ' + text.substring(0, 100));
-                }
-
-                const result = await response.json();
-
-                if (result.success) {
-                    showAlert('Sukses', 'Status berhasil diubah!', 'success');
-                    muatDataHutang(); // Reload data
-                } else {
-                    showAlert('Error', 'Gagal mengubah status!');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                showAlert('Error', 'Terjadi kesalahan: ' + error.message);
-            }
+                    () => {
+                        showToast("Aksi dibatalkan", "info");
+                    }
+            );
         }
+
 
         // Lihat detail transaksi
         async function lihatDetail(id_hutang, id_penjualan) {
@@ -1253,17 +1258,16 @@ if (ob_get_level()) ob_clean();
             const tanggalInput = document.getElementById('tanggalHutang').value;
 
             if (!nama || !jumlah || !tanggalInput) {
-                showAlert('Error', 'Nama pelanggan, jumlah hutang, dan tanggal harus diisi!');
+                showToast('Nama pelanggan, jumlah hutang, dan tanggal harus diisi!', 'error');
                 return;
             }
 
             if (isNaN(jumlah) || parseInt(jumlah) <= 0) {
-                showAlert('Error', 'Jumlah hutang harus berupa angka yang valid!');
+                showToast('Jumlah hutang harus berupa angka yang valid!', 'error');
                 return;
             }
 
             try {
-                // Konversi format datetime-local (YYYY-MM-DDTHH:MM) ke format database (YYYY-MM-DD HH:MM:SS)
                 const formattedDate = tanggalInput.replace('T', ' ') + ':00';
 
                 const response = await fetch('?action=tambah_hutang_manual', {
@@ -1279,7 +1283,6 @@ if (ob_get_level()) ob_clean();
                     })
                 });
 
-                // Validasi response JSON
                 const contentType = response.headers.get('content-type');
                 if (!contentType || !contentType.includes('application/json')) {
                     const text = await response.text();
@@ -1289,17 +1292,18 @@ if (ob_get_level()) ob_clean();
                 const result = await response.json();
 
                 if (result.success) {
-                    showAlert('Sukses', 'Hutang berhasil ditambahkan!', 'success');
+                    showToast('Hutang berhasil ditambahkan!', 'success');
                     tutupModalTambahHutang();
-                    muatDataHutang(); // Reload data
+                    muatDataHutang();
                 } else {
-                    showAlert('Error', 'Gagal menambahkan hutang: ' + (result.message || ''));
+                    showToast('Gagal menambahkan hutang: ' + (result.message || ''), 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                showAlert('Error', 'Terjadi kesalahan: ' + error.message);
+                showToast('Terjadi kesalahan: ' + error.message, 'error');
             }
         }
+
 
         // Tutup modal tambah hutang
         function tutupModalTambahHutang() {
@@ -1307,42 +1311,47 @@ if (ob_get_level()) ob_clean();
         }
 
         // Hapus hutang
-        async function hapusHutang(id, nama) {
-            if (!confirm(`Apakah Anda yakin ingin menghapus hutang atas nama "${nama}"?`)) {
-                return;
-            }
+        function hapusHutang(id, nama) {
+            showConfirm(
+                `Apakah Anda yakin ingin menghapus hutang atas nama "${nama}"?`,
+                async () => { // callback OK bisa async
+                        try {
+                            const response = await fetch('?action=delete_hutang', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    id
+                                })
+                            });
 
-            try {
-                const response = await fetch('?action=delete_hutang', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
+                            // Validasi response JSON
+                            const contentType = response.headers.get('content-type');
+                            if (!contentType || !contentType.includes('application/json')) {
+                                const text = await response.text();
+                                throw new Error('Response dari server bukan JSON: ' + text.substring(0, 100));
+                            }
+
+                            const result = await response.json();
+
+                            if (result.success) {
+                                showToast('Hutang berhasil dihapus!', 'success');
+                                muatDataHutang(); // Reload data
+                            } else {
+                                showToast('Gagal menghapus hutang: ' + (result.message || ''), 'error');
+                            }
+                        } catch (error) {
+                            console.error(error);
+                            showToast('Terjadi kesalahan: ' + error.message, 'error');
+                        }
                     },
-                    body: JSON.stringify({
-                        id: id
-                    })
-                });
-
-                // Validasi response JSON
-                const contentType = response.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    const text = await response.text();
-                    throw new Error('Response dari server bukan JSON: ' + text.substring(0, 100));
-                }
-
-                const result = await response.json();
-
-                if (result.success) {
-                    showAlert('Sukses', 'Hutang berhasil dihapus!', 'success');
-                    muatDataHutang(); // Reload data
-                } else {
-                    showAlert('Error', 'Gagal menghapus hutang: ' + (result.message || ''));
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                showAlert('Error', 'Terjadi kesalahan: ' + error.message);
-            }
+                    () => {
+                        showToast('Aksi dibatalkan', 'info'); // Callback cancel (opsional)
+                    }
+            );
         }
+
 
         // Muat data saat halaman dimuat
         document.addEventListener('DOMContentLoaded', function() {

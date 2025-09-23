@@ -4,6 +4,13 @@
         "jenis": "pemasukan",
         "jumlah": 5700,
         "keterangan": "Penjualan: Raden",
-        "tanggal": "2025-09-23 10:20:04"
+        "tanggal": "2025-09-23 10:20:00"
+    },
+    {
+        "id": "68d220e7e8737",
+        "jenis": "pemasukan",
+        "jumlah": 2131,
+        "keterangan": "asdasd",
+        "tanggal": "2025-09-23 11:24:00"
     }
 ]

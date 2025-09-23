@@ -53,5 +53,125 @@
         "waktu": "2025-09-23 10:20:04",
         "totalLaba": 5700,
         "recorded_in_keuangan": true
+    },
+    {
+        "items": [
+            {
+                "id": 1758442443,
+                "nama": "Beras",
+                "harga": 11500,
+                "jenisHarga": "ecer",
+                "qty": 1,
+                "stok": 42,
+                "hargaModal": 9900,
+                "laba": 1600
+            }
+        ],
+        "total": 11500,
+        "diskon": 0,
+        "grandTotal": 11500,
+        "bayar": 0,
+        "kembalian": 0,
+        "hutang": 11500,
+        "nama_pembeli": "Pelanggan",
+        "id": 1758603751,
+        "waktu": "2025-09-23 12:02:31",
+        "totalLaba": 1600
+    },
+    {
+        "items": [
+            {
+                "id": 1758442444,
+                "nama": "Indomie Goreng",
+                "harga": 3000,
+                "jenisHarga": "ecer",
+                "qty": 1,
+                "stok": 185,
+                "hargaModal": 2500,
+                "laba": 500
+            }
+        ],
+        "total": 3000,
+        "diskon": 0,
+        "grandTotal": 3000,
+        "bayar": 0,
+        "kembalian": 0,
+        "hutang": 3000,
+        "nama_pembeli": "Pelanggan",
+        "id": 1758604062,
+        "waktu": "2025-09-23 12:07:42",
+        "totalLaba": 500
+    },
+    {
+        "items": [
+            {
+                "id": 1758442445,
+                "nama": "Indomie Ayam Bawang",
+                "harga": 3000,
+                "jenisHarga": "ecer",
+                "qty": 2,
+                "stok": 159,
+                "hargaModal": 2500,
+                "laba": 1000
+            }
+        ],
+        "total": 6000,
+        "diskon": 0,
+        "grandTotal": 6000,
+        "bayar": 0,
+        "kembalian": 0,
+        "hutang": 6000,
+        "nama_pembeli": "Pelanggan",
+        "id": 1758604132,
+        "waktu": "2025-09-23 12:08:52",
+        "totalLaba": 1000
+    },
+    {
+        "items": [
+            {
+                "id": 1758442444,
+                "nama": "Indomie Goreng",
+                "harga": 3000,
+                "jenisHarga": "ecer",
+                "qty": 1,
+                "stok": 184,
+                "hargaModal": 2500,
+                "laba": 500
+            }
+        ],
+        "total": 3000,
+        "diskon": 0,
+        "grandTotal": 3000,
+        "bayar": 0,
+        "kembalian": 0,
+        "hutang": 3000,
+        "nama_pembeli": "Pelanggan",
+        "id": 1758604274,
+        "waktu": "2025-09-23 12:11:14",
+        "totalLaba": 500
+    },
+    {
+        "items": [
+            {
+                "id": "1758382403",
+                "nama": "Rinso Box",
+                "harga": 12000,
+                "jenisHarga": "ecer",
+                "qty": 2,
+                "stok": 119,
+                "hargaModal": 10000,
+                "laba": 4000
+            }
+        ],
+        "total": 24000,
+        "diskon": 0,
+        "grandTotal": 24000,
+        "bayar": 0,
+        "kembalian": 0,
+        "hutang": 24000,
+        "nama_pembeli": "Pelanggan",
+        "id": 1758605133,
+        "waktu": "2025-09-23 12:25:33",
+        "totalLaba": 4000
     }
 ]

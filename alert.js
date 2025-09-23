@@ -46,3 +46,44 @@ document.addEventListener("DOMContentLoaded", function () {
     document.head.appendChild(style);
   }
 });
+
+window.showConfirm = function (message, onConfirm, onCancel) {
+  const overlay = document.createElement("div");
+  overlay.className =
+    "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1200]";
+
+  const box = document.createElement("div");
+  box.className =
+    "bg-white rounded shadow-md p-6 w-80 max-w-full text-center flex flex-col gap-4";
+
+  const msg = document.createElement("p");
+  msg.textContent = message;
+
+  const btnContainer = document.createElement("div");
+  btnContainer.className = "flex justify-center gap-4";
+
+  const okBtn = document.createElement("button");
+  okBtn.textContent = "OK";
+  okBtn.className =
+    "px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600";
+  okBtn.onclick = () => {
+    onConfirm && onConfirm();
+    overlay.remove();
+  };
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.className =
+    "px-4 py-2 bg-gray-300 text-black rounded hover:bg-gray-400";
+  cancelBtn.onclick = () => {
+    onCancel && onCancel();
+    overlay.remove();
+  };
+
+  btnContainer.appendChild(okBtn);
+  btnContainer.appendChild(cancelBtn);
+  box.appendChild(msg);
+  box.appendChild(btnContainer);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+};

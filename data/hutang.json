@@ -1,12 +1,47 @@
 [
     {
-        "id": "H1758597817",
-        "id_penjualan": 1758597817,
-        "nama": "Tes",
-        "jumlah": 3200,
-        "tanggal": "2025-09-23 10:23:37",
+        "id": "H1758603751",
+        "id_penjualan": 1758603751,
+        "nama": "Pelanggan",
+        "jumlah": 11500,
+        "tanggal": "2025-09-23 12:02:31",
         "status": "belum lunas",
-        "tanggal_bayar": null,
-        "jumlah_awal": 3200
+        "tanggal_bayar": null
+    },
+    {
+        "id": "H1758604062",
+        "id_penjualan": 1758604062,
+        "nama": "Pelanggan",
+        "jumlah": 3000,
+        "tanggal": "2025-09-23 12:07:42",
+        "status": "belum lunas",
+        "tanggal_bayar": null
+    },
+    {
+        "id": "H1758604132",
+        "id_penjualan": 1758604132,
+        "nama": "Pelanggan",
+        "jumlah": 6000,
+        "tanggal": "2025-09-23 12:08:52",
+        "status": "belum lunas",
+        "tanggal_bayar": null
+    },
+    {
+        "id": "H1758604274",
+        "id_penjualan": 1758604274,
+        "nama": "Pelanggan",
+        "jumlah": 3000,
+        "tanggal": "2025-09-23 12:11:14",
+        "status": "belum lunas",
+        "tanggal_bayar": null
+    },
+    {
+        "id": "H1758605133",
+        "id_penjualan": 1758605133,
+        "nama": "Pelanggan",
+        "jumlah": 24000,
+        "tanggal": "2025-09-23 12:25:33",
+        "status": "belum lunas",
+        "tanggal_bayar": null
     }
 ]

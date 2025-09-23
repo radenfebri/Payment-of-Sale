@@ -427,6 +427,7 @@ if (isset($_GET['action'])) {
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="alert.js"></script>
     <style>
         #modalEdit {
             transition: opacity 0.3s ease;
@@ -1108,7 +1109,7 @@ if (isset($_GET['action'])) {
             };
 
             try {
-                // Muat data keuangan dari server, bukan dari file langsung
+                // Muat data keuangan dari server
                 const response = await fetch('?action=get_keuangan_data');
                 let keuanganData = await response.json();
 
@@ -1116,60 +1117,20 @@ if (isset($_GET['action'])) {
                 const index = keuanganData.findIndex(trx => trx.id === data.id);
 
                 if (index === -1) {
-                    alert('Transaksi tidak ditemukan!');
+                    showToast('Transaksi tidak ditemukan!', 'error');
                     return;
                 }
 
-                // Update data transaksi - pastikan format tanggal konsisten
+                // Update data transaksi
                 keuanganData[index] = {
                     ...keuanganData[index],
                     jenis: data.jenis,
                     jumlah: data.jumlah,
                     keterangan: data.keterangan,
-                    tanggal: data.tanggal // Biarkan PHP yang menangani konversi timezone
+                    tanggal: data.tanggal
                 };
 
-                // Simpan kembali ke file menggunakan endpoint PHP
-                const saveResponse = await fetch('?action=update_keuangan', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(keuanganData) // Perbaiki di sini: JSON.stringify, bukan JSON_encode
-                });
-
-                const result = await saveResponse.json();
-
-                if (result.success) {
-                    // Tutup modal dan muat ulang daftar transaksi
-                    tutupModalEdit();
-                    muatDaftarTransaksi();
-                    muatDashboardData(); // Refresh dashboard juga
-                    alert('Transaksi berhasil diupdate!');
-                } else {
-                    alert('Gagal mengupdate transaksi: ' + result.message);
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Gagal mengupdate transaksi: ' + error.message);
-            }
-        }
-
-        // Fungsi untuk menghapus transaksi
-        async function hapusTransaksi(id) {
-            if (!confirm('Apakah Anda yakin ingin menghapus transaksi ini?')) {
-                return;
-            }
-
-            try {
-                // Muat data keuangan
-                const response = await fetch('data/keuangan.json');
-                let keuanganData = await response.json();
-
-                // Filter transaksi yang akan dihapus
-                keuanganData = keuanganData.filter(trx => trx.id !== id);
-
-                // Simpan kembali ke file menggunakan endpoint PHP
+                // Simpan kembali ke server
                 const saveResponse = await fetch('?action=update_keuangan', {
                     method: 'POST',
                     headers: {
@@ -1181,18 +1142,64 @@ if (isset($_GET['action'])) {
                 const result = await saveResponse.json();
 
                 if (result.success) {
-                    // Muat ulang daftar transaksi
+                    tutupModalEdit();
                     muatDaftarTransaksi();
-                    muatDashboardData(); // Refresh dashboard juga
-                    alert('Transaksi berhasil dihapus!');
+                    muatDashboardData();
+                    showToast('Transaksi berhasil diupdate!', 'success');
                 } else {
-                    alert('Gagal menghapus transaksi: ' + result.message);
+                    showToast('Gagal mengupdate transaksi: ' + (result.message || ''), 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Gagal menghapus transaksi: ' + error.message);
+                showToast('Gagal mengupdate transaksi: ' + error.message, 'error');
             }
         }
+
+
+        // Fungsi untuk menghapus transaksi
+        function hapusTransaksi(id) {
+            showConfirm(
+                'Apakah Anda yakin ingin menghapus transaksi ini?',
+                async () => { // Callback OK
+                        try {
+                            // Muat data keuangan
+                            const response = await fetch('data/keuangan.json');
+                            let keuanganData = await response.json();
+
+                            // Filter transaksi yang akan dihapus
+                            keuanganData = keuanganData.filter(trx => trx.id !== id);
+
+                            // Simpan kembali ke file menggunakan endpoint PHP
+                            const saveResponse = await fetch('?action=update_keuangan', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify(keuanganData)
+                            });
+
+                            const result = await saveResponse.json();
+
+                            if (result.success) {
+                                // Muat ulang daftar transaksi & dashboard
+                                muatDaftarTransaksi();
+                                muatDashboardData();
+                                showToast('Transaksi berhasil dihapus!', 'success');
+                            } else {
+                                showToast('Gagal menghapus transaksi: ' + (result.message || ''), 'error');
+                            }
+                        } catch (error) {
+                            console.error('Error:', error);
+                            showToast('Gagal menghapus transaksi: ' + error.message, 'error');
+                        }
+                    },
+                    () => { // Callback Cancel
+                        showToast('Aksi dibatalkan', 'info');
+                    }
+            );
+        }
+
+
 
         // Event listener untuk form edit
         document.getElementById('formEditTransaksi').addEventListener('submit', simpanEditTransaksi);
@@ -1570,6 +1577,11 @@ if (isset($_GET['action'])) {
                 tanggal: formData.get('tanggal')
             };
 
+            if (!data.jenis || isNaN(data.jumlah) || !data.tanggal) {
+                showToast('Jenis, jumlah, dan tanggal harus diisi dengan benar!', 'error');
+                return;
+            }
+
             try {
                 const response = await fetch('?action=tambah_transaksi_keuangan', {
                     method: 'POST',
@@ -1582,22 +1594,25 @@ if (isset($_GET['action'])) {
                 const result = await response.json();
 
                 if (result.success) {
-                    alert('Transaksi berhasil ditambahkan!');
+                    showToast('Transaksi berhasil ditambahkan!', 'success');
                     this.reset();
+
                     // Set ulang nilai tanggal ke waktu sekarang (GMT+7)
                     const now = new Date();
                     now.setHours(now.getHours() + 7);
                     document.querySelector('input[name="tanggal"]').value = now.toISOString().slice(0, 16);
+
                     muatDashboardData(); // Reload data dashboard
                     muatDaftarTransaksi(); // Muat ulang daftar transaksi
                 } else {
-                    alert('Gagal menambahkan transaksi: ' + result.message);
+                    showToast('Gagal menambahkan transaksi: ' + (result.message || ''), 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Terjadi kesalahan: ' + error.message);
+                showToast('Terjadi kesalahan: ' + error.message, 'error');
             }
         });
+
 
         // Muat data saat halaman dimuat
         document.addEventListener('DOMContentLoaded', muatDashboardData);

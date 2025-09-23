@@ -17,7 +17,7 @@ if (isset($_GET['action'])) {
     // Baca data satuan
     $satuanData = file_get_contents($satuanFile);
     $satuan = json_decode($satuanData, true) ?? [];
-    
+
     $input = json_decode(file_get_contents("php://input"), true);
 
     switch ($_GET['action']) {
@@ -100,30 +100,31 @@ if (isset($_GET['action'])) {
     <meta charset="utf-8" />
     <title>Manajemen Satuan - POS</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="alert.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .table-container {
             max-height: 400px;
             overflow-y: auto;
         }
-        
+
         .sticky-thead th {
             position: sticky;
             top: 0;
             background: #f3f4f6;
             z-index: 10;
         }
-        
+
         /* Animasi untuk modal */
         .modal-transition {
             transition: opacity 0.3s ease, transform 0.3s ease;
         }
-        
+
         .modal-enter {
             opacity: 0;
             transform: scale(0.95);
         }
-        
+
         .modal-enter-active {
             opacity: 1;
             transform: scale(1);
@@ -155,7 +156,12 @@ if (isset($_GET['action'])) {
 
         <!-- Daftar Satuan -->
         <div class="bg-white p-6 rounded-lg shadow-lg">
-            <h3 class="text-lg font-semibold mb-4">Daftar Satuan</h3>
+            <div class="mb-4 flex justify-between items-center">
+                <h3 class="text-lg font-semibold">Daftar Satuan</h3>
+                <input type="text" id="searchSatuan" placeholder="Cari satuan..."
+                    class="border rounded-md p-2 w-1/3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" />
+            </div>
+
             <div class="table-container">
                 <table class="w-full text-left border-collapse">
                     <thead>
@@ -176,6 +182,7 @@ if (isset($_GET['action'])) {
             </div>
         </div>
 
+
         <!-- Modal Edit Satuan -->
         <div id="modalEditSatuan" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center hidden z-50 modal-transition modal-enter">
             <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
@@ -190,16 +197,16 @@ if (isset($_GET['action'])) {
                         <input type="hidden" id="editId" name="id">
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-gray-700 mb-1">Nama Satuan</label>
-                            <input type="text" id="editNama" name="nama" 
-                                class="w-full border rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" 
+                            <input type="text" id="editNama" name="nama"
+                                class="w-full border rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                                 required>
                         </div>
                         <div class="flex justify-end space-x-2">
-                            <button type="button" onclick="tutupModalEditSatuan()" 
+                            <button type="button" onclick="tutupModalEditSatuan()"
                                 class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 transition-colors">
                                 Batal
                             </button>
-                            <button type="submit" 
+                            <button type="submit"
                                 class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-500 transition-colors">
                                 Simpan Perubahan
                             </button>
@@ -216,11 +223,11 @@ if (isset($_GET['action'])) {
             try {
                 // console.log('Memuat data satuan...');
                 const response = await fetch('satuan.php?action=get_satuan');
-                
+
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                
+
                 const satuanData = await response.json();
                 // console.log('Data diterima:', satuanData);
                 tampilkanDaftarSatuan(satuanData);
@@ -236,42 +243,60 @@ if (isset($_GET['action'])) {
         function tampilkanDaftarSatuan(satuan) {
             const container = document.getElementById('daftarSatuan');
 
-            if (satuan.length === 0) {
+            // Urut berdasarkan id descending (data terbaru di atas)
+            satuan.sort((a, b) => b.id - a.id);
+
+            // Filter berdasarkan search
+            const searchValue = document.getElementById('searchSatuan')?.value.trim().toLowerCase();
+            const filtered = searchValue ?
+                satuan.filter(item => item.nama.toLowerCase().includes(searchValue)) :
+                satuan;
+
+            if (filtered.length === 0) {
                 container.innerHTML = `
-                    <tr><td colspan="3" class="p-4 text-center text-gray-500">Tidak ada data satuan</td></tr>
-                `;
+            <tr><td colspan="3" class="p-4 text-center text-gray-500">Tidak ada data satuan</td></tr>
+        `;
                 return;
             }
 
             let html = '';
-            satuan.forEach((item, index) => {
-                // Escape karakter khusus untuk JavaScript
+            filtered.forEach((item, index) => {
                 const escapedNama = item.nama.replace(/'/g, "\\'").replace(/"/g, '\\"');
-                
+
                 html += `
-                    <tr class="border-b hover:bg-gray-50 transition-colors">
-                        <td class="p-3">${index + 1}</td>
-                        <td class="p-3 font-medium">${item.nama}</td>
-                        <td class="p-3">
-                            <div class="flex justify-center space-x-2">
-                                <button onclick="bukaModalEditSatuan(${item.id}, '${escapedNama}')" 
-                                        class="text-blue-500 hover:text-blue-700 px-3 py-1 rounded hover:bg-blue-50 transition-colors" 
-                                        title="Edit">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button onclick="hapusSatuan(${item.id})" 
-                                        class="text-red-500 hover:text-red-700 px-3 py-1 rounded hover:bg-red-50 transition-colors" 
-                                        title="Hapus">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
+            <tr class="border-b hover:bg-gray-50 transition-colors">
+                <td class="p-3">${index + 1}</td>
+                <td class="p-3 font-medium">${item.nama}</td>
+                <td class="p-3">
+                    <div class="flex justify-center space-x-2">
+                        <button onclick="bukaModalEditSatuan(${item.id}, '${escapedNama}')" 
+                                class="text-blue-500 hover:text-blue-700 px-3 py-1 rounded hover:bg-blue-50 transition-colors" 
+                                title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="hapusSatuan(${item.id})" 
+                                class="text-red-500 hover:text-red-700 px-3 py-1 rounded hover:bg-red-50 transition-colors" 
+                                title="Hapus">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
             });
 
             container.innerHTML = html;
         }
+
+
+        document.getElementById('searchSatuan').addEventListener('input', () => {
+            // Muat ulang tabel tanpa fetch lagi, cukup tampilkan yang sudah diambil
+            fetch('satuan.php?action=get_satuan')
+                .then(res => res.json())
+                .then(data => tampilkanDaftarSatuan(data))
+                .catch(err => console.error(err));
+        });
+
 
         // Form tambah satuan
         document.getElementById('formSatuan').addEventListener('submit', async function(e) {
@@ -279,8 +304,13 @@ if (isset($_GET['action'])) {
 
             const formData = new FormData(this);
             const data = {
-                nama: formData.get('nama')
+                nama: formData.get('nama').trim()
             };
+
+            if (!data.nama) {
+                showToast('Nama satuan harus diisi!', 'error');
+                return;
+            }
 
             try {
                 const response = await fetch('satuan.php?action=tambah_satuan', {
@@ -294,23 +324,24 @@ if (isset($_GET['action'])) {
                 const result = await response.json();
 
                 if (result.success) {
-                    alert('Satuan berhasil ditambahkan!');
+                    showToast('Satuan berhasil ditambahkan!', 'success');
                     this.reset();
                     muatDaftarSatuan();
                 } else {
-                    alert('Gagal: ' + result.message);
+                    showToast('Gagal: ' + (result.message || ''), 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Terjadi kesalahan');
+                showToast('Terjadi kesalahan', 'error');
             }
         });
+
 
         // Modal edit satuan
         function bukaModalEditSatuan(id, nama) {
             document.getElementById('editId').value = id;
             document.getElementById('editNama').value = nama;
-            
+
             const modal = document.getElementById('modalEditSatuan');
             modal.classList.remove('hidden');
             setTimeout(() => {
@@ -333,8 +364,13 @@ if (isset($_GET['action'])) {
             const formData = new FormData(this);
             const data = {
                 id: parseInt(formData.get('id')),
-                nama: formData.get('nama')
+                nama: formData.get('nama').trim()
             };
+
+            if (!data.nama) {
+                showToast('Nama satuan harus diisi!', 'error');
+                return;
+            }
 
             try {
                 const response = await fetch('satuan.php?action=edit_satuan', {
@@ -348,48 +384,54 @@ if (isset($_GET['action'])) {
                 const result = await response.json();
 
                 if (result.success) {
-                    alert('Satuan berhasil diupdate!');
+                    showToast('Satuan berhasil diupdate!', 'success');
                     tutupModalEditSatuan();
                     muatDaftarSatuan();
                 } else {
-                    alert('Gagal: ' + result.message);
+                    showToast('Gagal: ' + (result.message || ''), 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Terjadi kesalahan');
+                showToast('Terjadi kesalahan', 'error');
             }
         });
 
+
         // Hapus satuan
-        async function hapusSatuan(id) {
-            if (!confirm('Apakah Anda yakin ingin menghapus satuan ini?')) {
-                return;
-            }
+        function hapusSatuan(id) {
+            showConfirm(
+                'Apakah Anda yakin ingin menghapus satuan ini?',
+                async () => { // Callback OK
+                        try {
+                            const response = await fetch('satuan.php?action=hapus_satuan', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    id: id
+                                })
+                            });
 
-            try {
-                const response = await fetch('satuan.php?action=hapus_satuan', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
+                            const result = await response.json();
+
+                            if (result.success) {
+                                showToast('Satuan berhasil dihapus!', 'success');
+                                muatDaftarSatuan();
+                            } else {
+                                showToast('Gagal menghapus satuan: ' + (result.message || ''), 'error');
+                            }
+                        } catch (error) {
+                            console.error('Error:', error);
+                            showToast('Terjadi kesalahan: ' + error.message, 'error');
+                        }
                     },
-                    body: JSON.stringify({
-                        id: id
-                    })
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    alert('Satuan berhasil dihapus!');
-                    muatDaftarSatuan();
-                } else {
-                    alert('Gagal menghapus satuan');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Terjadi kesalahan');
-            }
+                    () => { // Callback Cancel
+                        showToast('Aksi dibatalkan', 'info');
+                    }
+            );
         }
+
 
         // Muat data saat halaman dimuat
         document.addEventListener('DOMContentLoaded', muatDaftarSatuan);

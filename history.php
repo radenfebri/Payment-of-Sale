@@ -381,12 +381,12 @@ if (isset($_GET['action'])) {
                 <button onclick="lihatDetail(${index})" class="text-blue-500 hover:text-blue-700 mr-2">
                     <i class="fas fa-eye"></i> Detail
                 </button>
-                <button onclick="cetakStruk(${index})" class="text-green-500 hover:text-green-700">
+                <button onclick="cetakStruk(${index})" class="text-green-500 hover:text-green-700 mr-2">
                     <i class="fas fa-print"></i> Cetak
                 </button>
                 <button onclick="hapusTransaksi(${index})" class="text-red-500 hover:text-red-700">
                     <i class="fas fa-trash-alt"></i> Hapus
-                </button>
+                </button>   
             </td>
         </tr>
         `;
@@ -397,23 +397,30 @@ if (isset($_GET['action'])) {
 
         // Hapus transaksi individual
         function hapusTransaksi(index) {
-            if (confirm('Apakah Anda yakin ingin menghapus transaksi ini?')) {
-                fetch(`history.php?action=delete_transaction&index=${index}`)
-                    .then(response => response.json())
-                    .then(result => {
-                        if (result.success) {
-                            alert('Transaksi berhasil dihapus');
-                            muatHistoryTransaksi(); // Reload data
-                        } else {
-                            alert('Gagal menghapus transaksi: ' + result.error);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        alert('Gagal menghapus transaksi');
-                    });
-            }
+            showConfirm(
+                'Apakah Anda yakin ingin menghapus transaksi ini?',
+                () => { // Callback OK
+                    fetch(`history.php?action=delete_transaction&index=${index}`)
+                        .then(response => response.json())
+                        .then(result => {
+                            if (result.success) {
+                                showToast('Transaksi berhasil dihapus', 'success');
+                                muatHistoryTransaksi(); // Reload data
+                            } else {
+                                showToast('Gagal menghapus transaksi: ' + (result.error || ''), 'error');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            showToast('Gagal menghapus transaksi', 'error');
+                        });
+                },
+                () => { // Callback Cancel
+                    showToast('Aksi dibatalkan', 'info');
+                }
+            );
         }
+
 
 
         // Toggle bulk delete section
@@ -434,20 +441,23 @@ if (isset($_GET['action'])) {
             const endDate = document.getElementById('bulkDeleteEnd').value;
 
             if (!startDate || !endDate) {
-                alert('Harap pilih tanggal mulai dan tanggal akhir');
+                showToast('Harap pilih tanggal mulai dan tanggal akhir', 'error');
                 return;
             }
 
             if (startDate > endDate) {
-                alert('Tanggal mulai tidak boleh lebih besar dari tanggal akhir');
+                showToast('Tanggal mulai tidak boleh lebih besar dari tanggal akhir', 'error');
                 return;
             }
 
-            // Show confirmation modal
+            // Tampilkan tanggal di modal konfirmasi
             document.getElementById('confirmDateRange').textContent =
                 `${new Date(startDate).toLocaleDateString('id-ID')} hingga ${new Date(endDate).toLocaleDateString('id-ID')}`;
+
+            // Tampilkan modal konfirmasi bulk delete
             document.getElementById('confirmBulkDeleteModal').classList.remove('hidden');
         }
+
 
         // Cancel bulk delete
         function cancelBulkDelete() {
@@ -459,25 +469,34 @@ if (isset($_GET['action'])) {
             const startDate = document.getElementById('bulkDeleteStart').value;
             const endDate = document.getElementById('bulkDeleteEnd').value;
 
-            fetch(`history.php?action=bulk_delete&startDate=${startDate}&endDate=${endDate}`)
-                .then(response => response.json())
-                .then(result => {
-                    document.getElementById('confirmBulkDeleteModal').classList.add('hidden');
+            showConfirm(
+                `Apakah Anda yakin ingin menghapus semua transaksi dari ${startDate} sampai ${endDate}?`,
+                () => { // Callback OK
+                    fetch(`history.php?action=bulk_delete&startDate=${startDate}&endDate=${endDate}`)
+                        .then(response => response.json())
+                        .then(result => {
+                            document.getElementById('confirmBulkDeleteModal').classList.add('hidden');
 
-                    if (result.success) {
-                        alert(`Berhasil menghapus ${result.deleted} transaksi`);
-                        toggleBulkDelete(); // Hide the bulk delete section
-                        muatHistoryTransaksi(); // Reload data
-                    } else {
-                        alert('Gagal menghapus transaksi: ' + result.error);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    document.getElementById('confirmBulkDeleteModal').classList.add('hidden');
-                    alert('Gagal menghapus transaksi');
-                });
+                            if (result.success) {
+                                showToast(`Berhasil menghapus ${result.deleted} transaksi`, 'success');
+                                toggleBulkDelete(); // Hide the bulk delete section
+                                muatHistoryTransaksi(); // Reload data
+                            } else {
+                                showToast('Gagal menghapus transaksi: ' + (result.error || ''), 'error');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            document.getElementById('confirmBulkDeleteModal').classList.add('hidden');
+                            showToast('Gagal menghapus transaksi', 'error');
+                        });
+                },
+                () => { // Callback Cancel
+                    showToast('Aksi bulk delete dibatalkan', 'info');
+                }
+            );
         }
+
 
         // Lihat detail transaksi
         function lihatDetail(index) {

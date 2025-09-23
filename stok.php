@@ -264,6 +264,7 @@ if (isset($_GET['action'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manajemen Stok Barang - POS System</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="alert.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
         tailwind.config = {
@@ -933,12 +934,12 @@ if (isset($_GET['action'])) {
             const keterangan = document.getElementById('keteranganTambah').value;
 
             if (!barangId) {
-                alert('Pilih barang terlebih dahulu!');
+                showToast('Pilih barang terlebih dahulu!', 'error');
                 return;
             }
 
             if (!jumlah || jumlah < 1) {
-                alert('Masukkan jumlah stok yang valid!');
+                showToast('Masukkan jumlah stok yang valid!', 'error');
                 return;
             }
 
@@ -958,17 +959,18 @@ if (isset($_GET['action'])) {
                 const result = await response.json();
 
                 if (result.success) {
-                    alert('Stok berhasil ditambahkan!');
+                    showToast('Stok berhasil ditambahkan!', 'success');
                     closeTambahStokModal();
                     loadBarangData(); // Muat ulang data dari server
                 } else {
-                    alert('Gagal: ' + result.message);
+                    showToast('Gagal menambah stok: ' + (result.message || ''), 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Terjadi kesalahan saat menambah stok');
+                showToast('Terjadi kesalahan saat menambah stok', 'error');
             }
         }
+
 
         // Fungsi untuk memproses pengurangan stok
         async function kurangiStok() {
@@ -1053,22 +1055,52 @@ if (isset($_GET['action'])) {
 
         // Fungsi untuk membuka modal hapus riwayat
         function openHapusRiwayatModal(barangId = null, barangNama = null) {
-            document.getElementById('hapusRiwayatModal').classList.remove('hidden');
-            document.body.classList.add('modal-open');
+            let message = '';
 
             if (barangId && barangId !== 'all') {
-                document.getElementById('hapusRiwayatBarangId').value = barangId;
                 const barang = barangData.find(b => b.id === barangId);
                 const namaBarang = barang ? barang.nama : barangNama;
-                document.getElementById('hapusRiwayatMessage').innerHTML =
-                    `Apa Anda yakin ingin menghapus <strong>semua riwayat stok</strong> untuk <strong>${namaBarang}</strong>?<br><br>
-            <span class="text-red-600 font-semibold"> Tindakan ini tidak dapat dibatalkan! </span>`;
+                message = `Apa Anda yakin ingin menghapus semua riwayat stok untuk <strong>${namaBarang}</strong>?
+        \n\nTindakan ini tidak dapat dibatalkan!`;
             } else {
-                document.getElementById('hapusRiwayatBarangId').value = 'all';
-                document.getElementById('hapusRiwayatMessage').innerHTML =
-                    'Apa Anda yakin ingin menghapus <strong>semua riwayat stok</strong> dari <strong>semua barang</strong>?<br><br> <span class="text-red-600 font-semibold" > Tindakan ini tidak dapat dibatalkan! </span>';
+                message = `Apa Anda yakin ingin menghapus semua riwayat stok dari semua barang?
+        \n\nTindakan ini tidak dapat dibatalkan!`;
             }
+
+            showConfirm(
+                message,
+                async () => {
+                        try {
+                            const response = await fetch('stok.php?action=hapus_riwayat', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    barangId: barangId || 'all'
+                                })
+                            });
+
+                            const result = await response.json();
+
+                            if (result.success) {
+                                showToast(result.message || 'Riwayat berhasil dihapus!', 'success');
+                                // Muat ulang data atau refresh tampilan riwayat
+                                loadBarangData();
+                            } else {
+                                showToast('Gagal menghapus riwayat: ' + (result.message || ''), 'error');
+                            }
+                        } catch (error) {
+                            console.error('Error:', error);
+                            showToast('Terjadi kesalahan saat menghapus riwayat', 'error');
+                        }
+                    },
+                    () => {
+                        showToast('Aksi dibatalkan', 'info');
+                    }
+            );
         }
+
 
         // Fungsi untuk menutup modal hapus riwayat
         function closeHapusRiwayatModal() {
@@ -1292,15 +1324,15 @@ if (isset($_GET['action'])) {
                                         <td style="text-align:right"><b>Stok</b></td>
                                     </tr>`;
 
-                                        dataExport.forEach(item => {
-                                            content += `
+                dataExport.forEach(item => {
+                    content += `
                                     <tr>
                                         <td>${item.nama}</td>
                                         <td style="text-align:right">${item.stok}</td>
                                     </tr>`;
-                                        });
+                });
 
-                                        content += `
+                content += `
                                 </table>
                                 <div class="line"></div>
                                 <p style="text-align:center">Dicetak: ${new Date().toLocaleString()}</p>
@@ -1349,36 +1381,42 @@ if (isset($_GET['action'])) {
         });
 
         async function hapusRiwayatEntry(id_barang, waktu) {
-            if (!confirm("Yakin ingin menghapus riwayat ini?")) return;
+            showConfirm(
+                "Yakin ingin menghapus riwayat ini?",
+                async () => { // Callback OK
+                        try {
+                            const response = await fetch("stok.php?action=hapus_riwayat_entry", {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json"
+                                },
+                                body: JSON.stringify({
+                                    id_barang: id_barang,
+                                    waktu: waktu
+                                })
+                            });
 
-            try {
-                const response = await fetch("stok.php?action=hapus_riwayat_entry", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
+                            const result = await response.json();
+
+                            if (result.success) {
+                                showToast(result.message || "Riwayat berhasil dihapus!", "success");
+                                // Refresh tampilan riwayat
+                                const barang = barangData.find(b => b.id === id_barang);
+                                if (barang) {
+                                    lihatRiwayat(id_barang, barang.nama, barang.kodeProduk, barang.stok);
+                                }
+                            } else {
+                                showToast("Gagal: " + (result.message || ""), "error");
+                            }
+                        } catch (error) {
+                            console.error("Error:", error);
+                            showToast("Terjadi kesalahan saat menghapus riwayat", "error");
+                        }
                     },
-                    body: JSON.stringify({
-                        id_barang: id_barang,
-                        waktu: waktu
-                    })
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    alert(result.message);
-                    // Refresh tampilan riwayat
-                    const barang = barangData.find(b => b.id === id_barang);
-                    if (barang) {
-                        lihatRiwayat(id_barang, barang.nama, barang.kodeProduk, barang.stok);
+                    () => { // Callback Cancel
+                        showToast("Aksi dibatalkan", "info");
                     }
-                } else {
-                    alert("Gagal: " + result.message);
-                }
-            } catch (error) {
-                console.error("Error:", error);
-                alert("Terjadi kesalahan saat menghapus riwayat");
-            }
+            );
         }
 
         function hapusSemuaRiwayat() {
