@@ -4,7 +4,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const container = document.createElement("div");
     container.id = "toast-container";
     container.className =
-      "fixed top-5 right-5 flex flex-col gap-2 z-50 pointer-events-none";
+      "fixed top-5 right-5 flex flex-col gap-2 z-[1100] pointer-events-none";
     document.body.appendChild(container);
   }
 

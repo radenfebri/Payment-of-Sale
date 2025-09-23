@@ -152,9 +152,6 @@ if (isset($_GET['action'])) {
     <main class="flex-1 p-6">
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-2xl font-semibold">📋 History Transaksi</h2>
-            <button onclick="toggleBulkDelete()" class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-500">
-                <i class="fas fa-trash-alt mr-1"></i> Hapus Massal
-            </button>
         </div>
 
         <!-- Bulk Delete Section (Initially Hidden) -->
@@ -208,7 +205,12 @@ if (isset($_GET['action'])) {
 
         <!-- Daftar Transaksi -->
         <div class="bg-white p-6 rounded-lg shadow-lg">
-            <h3 class="text-lg font-semibold mb-4">Daftar Transaksi</h3>
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Daftar Transaksi</h3>
+                <button onclick="toggleBulkDelete()" class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-500">
+                    <i class="fas fa-trash-alt mr-1"></i> Hapus Massal
+                </button>
+            </div>
             <div class="table-container">
                 <table id="transactionTable" class="w-full text-left">
                     <thead>
@@ -225,7 +227,7 @@ if (isset($_GET['action'])) {
                     </thead>
                     <tbody id="daftarTransaksi">
                         <tr id="emptyTransaction">
-                            <td colspan="7" class="p-4 text-center text-gray-500">
+                            <td colspan="8" class="p-4 text-center text-gray-500">
                                 <i class="fas fa-spinner fa-spin mr-2"></i> Memuat data...
                             </td>
                         </tr>
@@ -233,6 +235,7 @@ if (isset($_GET['action'])) {
                 </table>
             </div>
         </div>
+
 
         <!-- Modal Detail Transaksi -->
         <div id="modalDetail" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center hidden">
@@ -244,8 +247,8 @@ if (isset($_GET['action'])) {
                         <button onclick="cetakStrukDetail()" class="bg-green-300 text-white-700 px-4 py-2 rounded-md hover:bg-green-400 mr-2">
                             <i class="fas fa-print mr-1"></i> Cetak Struk
                         </button>
-                        <button onclick="tutupModalDetail()" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 mr-2">
-                            Tutup
+                        <button onclick="tutupModalDetail()" class="bg-red-300 text-white-700 px-4 py-2 rounded-md hover:bg-red-400 mr-2">
+                            <i class="fas fa-close mr-1"></i> Tutup
                         </button>
                     </div>
                 </div>
@@ -378,7 +381,10 @@ if (isset($_GET['action'])) {
                 <button onclick="lihatDetail(${index})" class="text-blue-500 hover:text-blue-700 mr-2">
                     <i class="fas fa-eye"></i> Detail
                 </button>
-                <button onclick="hapusTransaksi(${item._index})" class="text-red-500 hover:text-red-700">
+                <button onclick="cetakStruk(${index})" class="text-green-500 hover:text-green-700">
+                    <i class="fas fa-print"></i> Cetak
+                </button>
+                <button onclick="hapusTransaksi(${index})" class="text-red-500 hover:text-red-700">
                     <i class="fas fa-trash-alt"></i> Hapus
                 </button>
             </td>
@@ -408,6 +414,7 @@ if (isset($_GET['action'])) {
                     });
             }
         }
+
 
         // Toggle bulk delete section
         function toggleBulkDelete() {
@@ -569,6 +576,28 @@ if (isset($_GET['action'])) {
 
             // POST ke history.php sendiri
             fetch('', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showToast('Struk berhasil dicetak!', 'success', 3000);
+                    } else {
+                        showToast('Gagal mencetak: ' + data.message, 'error', 5000);
+                    }
+                })
+                .catch(err => showToast('Terjadi kesalahan saat koneksi ke printer', 'error', 5000));
+        }
+
+        function cetakStruk(index) {
+            const transaksi = currentTransactions[index];
+
+            const formData = new FormData();
+            formData.append('tes_printer', '1');
+            formData.append('transaksi', JSON.stringify(transaksi));
+
+            fetch('history.php', {
                     method: 'POST',
                     body: formData
                 })

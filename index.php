@@ -43,7 +43,7 @@
         <i data-lucide="bar-chart-3" class="w-6 h-6 md:w-7 md:h-7 text-blue-600"></i>
         Ringkasan
       </h2>
-      
+
       <!-- Date Filter -->
       <div class="mt-4 md:mt-0 flex flex-col sm:flex-row gap-2">
         <div class="flex items-center gap-2">
@@ -277,25 +277,19 @@
 
     // Filter data by date range
     function filterDataByDate(data, dateField) {
-      if (!dateFilter.startDate && !dateFilter.endDate) {
-        return data;
-      }
+      if (!dateFilter.startDate && !dateFilter.endDate) return data;
 
       return data.filter(item => {
         const itemDate = new Date(item[dateField]);
         if (isNaN(itemDate.getTime())) return false;
 
-        if (dateFilter.startDate && itemDate < dateFilter.startDate) {
-          return false;
-        }
-
-        if (dateFilter.endDate && itemDate > dateFilter.endDate) {
-          return false;
-        }
+        if (dateFilter.startDate && itemDate < dateFilter.startDate) return false;
+        if (dateFilter.endDate && itemDate > dateFilter.endDate) return false;
 
         return true;
       });
     }
+
 
     // Get date range text for display
     function getDateRangeText() {
@@ -303,8 +297,12 @@
         return "Hari Ini";
       }
 
-      const options = { day: '2-digit', month: 'short', year: 'numeric' };
-      
+      const options = {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      };
+
       if (dateFilter.startDate && dateFilter.endDate) {
         const start = dateFilter.startDate.toLocaleDateString('id-ID', options);
         const end = dateFilter.endDate.toLocaleDateString('id-ID', options);
@@ -357,7 +355,7 @@
     async function loadAllData() {
       try {
         console.log('Loading all data...');
-        
+
         // Load data from JSON files
         [allBarangData, allPiutangData, allPenjualanData, allKeuanganData] = await Promise.all([
           loadData('barang.json'),
@@ -378,12 +376,13 @@
       // Filter data based on date range
       const filteredPenjualan = filterDataByDate(allPenjualanData, 'waktu');
       const filteredKeuangan = filterDataByDate(allKeuanganData, 'tanggal');
-      
+      const saldo = calculateSaldo(filteredKeuangan);
+
       // Update UI with filtered data
       updateSummary(allBarangData, allPiutangData, filteredPenjualan, filteredKeuangan);
       renderRecentTransactions(filteredPenjualan);
       renderCharts(filteredPenjualan, allBarangData);
-      
+
       // Update date range text
       document.getElementById('dateRange').innerText = getDateRangeText();
     }
@@ -487,14 +486,14 @@
       // Determine date range for sales chart
       let dateRange = [];
       let chartTitle = "Penjualan";
-      
+
       if (dateFilter.startDate && dateFilter.endDate) {
         // Custom date range
         const start = new Date(dateFilter.startDate);
         const end = new Date(dateFilter.endDate);
         const diffTime = Math.abs(end - start);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
+
         if (diffDays <= 31) {
           // Show daily data for up to 31 days
           for (let i = 0; i <= diffDays; i++) {
@@ -509,10 +508,10 @@
           const startYear = start.getFullYear();
           const endMonth = end.getMonth();
           const endYear = end.getFullYear();
-          
+
           let currentYear = startYear;
           let currentMonth = startMonth;
-          
+
           while (currentYear < endYear || (currentYear === endYear && currentMonth <= endMonth)) {
             dateRange.push(new Date(currentYear, currentMonth, 1));
             currentMonth++;
@@ -532,7 +531,7 @@
         }).reverse();
         chartTitle = "Penjualan 7 Hari Terakhir";
       }
-      
+
       // Update chart title
       document.getElementById("salesChartTitle").innerText = chartTitle;
 
@@ -542,7 +541,7 @@
           // Monthly aggregation
           const month = date.getMonth();
           const year = date.getFullYear();
-          
+
           return transactions
             .filter(t => {
               try {
@@ -557,7 +556,7 @@
         } else {
           // Daily aggregation
           const dateFormatted = date.toLocaleDateString('id-ID');
-          
+
           return transactions
             .filter(t => {
               try {
@@ -576,9 +575,15 @@
       // Format labels for display
       const labels = dateRange.map(date => {
         if (dateRange.length > 31) {
-          return date.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' });
+          return date.toLocaleDateString('id-ID', {
+            month: 'short',
+            year: 'numeric'
+          });
         } else {
-          return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
+          return date.toLocaleDateString('id-ID', {
+            day: '2-digit',
+            month: 'short'
+          });
         }
       });
 
