@@ -32,47 +32,30 @@ if (isset($_GET['action'])) {
         $count = 0;
 
         foreach ($penjualan as &$p) {
-            $hasDebt = isset($p['hutang']) && $p['hutang'] > 0;
             $alreadyRecorded = isset($p['recorded_in_keuangan']) && $p['recorded_in_keuangan'] === true;
+            if ($alreadyRecorded) continue;
 
-            // Jangan sync jika sudah dicatat
-            if ($alreadyRecorded) {
-                continue;
-            }
-
-            // Hitung laba yang sudah diterima (dari bagian yang sudah dibayar)
-            $totalLaba = isset($p['totalLaba']) ? $p['totalLaba'] : $p['grandTotal'];
-            $totalValue = $p['grandTotal'];
+            $totalLaba = $p['totalLaba'] ?? $p['grandTotal'];
             $hutang = $p['hutang'] ?? 0;
 
-            // Hitung persentase yang sudah dibayar
-            if ($totalValue > 0) {
-                $persentaseBayar = ($totalValue - $hutang) / $totalValue;
-                $labaDiterima = $totalLaba * $persentaseBayar;
-            } else {
-                $labaDiterima = $totalLaba;
+            $nama = $p['nama_pembeli'] ?? 'Pelanggan';
+            $keterangan = 'Penjualan: ' . $nama;
+            if ($hutang > 0) {
+                $keterangan .= $hutang == ($p['grandTotal'] ?? 0) ? " (Hutang penuh: $hutang)" : " (Sebagian, hutang: $hutang)";
             }
 
-            // Bulatkan ke integer
-            $labaDiterima = (int) round($labaDiterima);
+            $newTransaction = [
+                'id' => uniqid(),
+                'jenis' => 'pemasukan',
+                'jumlah' => $totalLaba, // catat seluruh laba
+                'keterangan' => $keterangan,
+                'tanggal' => $p['waktu'] ?? date('Y-m-d H:i:s')
+            ];
 
-            if ($labaDiterima > 0) {
-                $keterangan = 'Penjualan: ' . ($p['nama_pembeli'] ?? 'Pelanggan') .
-                    ($hasDebt ? ' (Sebagian, hutang: ' . $hutang . ')' : '');
-
-                $newTransaction = [
-                    'id' => uniqid(),
-                    'jenis' => 'pemasukan',
-                    'jumlah' => $labaDiterima,
-                    'keterangan' => $keterangan,
-                    'tanggal' => $p['waktu']
-                ];
-
-                $keuangan[] = $newTransaction;
-                $p['recorded_in_keuangan'] = true;
-                $updated = true;
-                $count++;
-            }
+            $keuangan[] = $newTransaction;
+            $p['recorded_in_keuangan'] = true;
+            $updated = true;
+            $count++;
         }
 
         if ($updated) {
@@ -82,6 +65,7 @@ if (isset($_GET['action'])) {
 
         return $count;
     }
+
 
     switch ($_GET['action']) {
         case 'get_dashboard_data':
@@ -385,13 +369,14 @@ if (isset($_GET['action'])) {
                     'shouldSync' => !$alreadyRecorded && !$hasDebt
                 ];
 
-                if (!$alreadyRecorded && !$hasDebt) {
+                if (!$alreadyRecorded) {
                     $newTransaction = [
                         'id' => uniqid(),
                         'jenis' => 'pemasukan',
-                        'jumlah' => isset($p['totalLaba']) ? $p['totalLaba'] : $p['grandTotal'],
-                        'keterangan' => 'Penjualan: ' . ($p['nama_pembeli'] ?? 'Pelanggan'),
-                        'tanggal' => $p['waktu']
+                        'jumlah' => $p['totalLaba'] ?? $p['grandTotal'],
+                        'keterangan' => 'Penjualan: ' . ($p['nama_pembeli'] ?? 'Pelanggan') .
+                            ($p['hutang'] > 0 ? ' (Hutang: ' . $p['hutang'] . ')' : ''),
+                        'tanggal' => $p['waktu'] ?? date('Y-m-d H:i:s')
                     ];
 
                     $keuangan[] = $newTransaction;
@@ -633,25 +618,27 @@ if (isset($_GET['action'])) {
             <!-- Daftar Transaksi Keuangan -->
             <div class="mt-8">
                 <h3 class="text-lg font-semibold mb-4">Daftar Transaksi Keuangan</h3>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-gray-100">
-                                <th class="p-3 border-b">Tanggal</th>
-                                <th class="p-3 border-b">Jenis</th>
-                                <th class="p-3 border-b">Keterangan</th>
-                                <th class="p-3 border-b">Jumlah</th>
-                                <th class="p-3 border-b">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody id="daftarTransaksi">
-                            <tr>
-                                <td colspan="5" class="p-4 text-center text-gray-500">
-                                    <i class="fas fa-spinner fa-spin mr-2"></i> Memuat data...
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="overflow-x-auto border rounded-lg">
+                    <div class="overflow-y-auto max-h-96"> <!-- scroll vertikal -->
+                        <table class="w-full text-left border-collapse">
+                            <thead class="sticky top-0 bg-gray-100 z-10">
+                                <tr>
+                                    <th class="p-3 border-b">Tanggal</th>
+                                    <th class="p-3 border-b">Jenis</th>
+                                    <th class="p-3 border-b">Keterangan</th>
+                                    <th class="p-3 border-b">Jumlah</th>
+                                    <th class="p-3 border-b">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="daftarTransaksi">
+                                <tr>
+                                    <td colspan="5" class="p-4 text-center text-gray-500">
+                                        <i class="fas fa-spinner fa-spin mr-2"></i> Memuat data...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

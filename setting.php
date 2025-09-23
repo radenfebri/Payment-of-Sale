@@ -178,9 +178,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tes_printer'])) {
                 })
                 .then(res => res.json())
                 .then(data => {
-                    if (data.status === 'success') showToast(data.message, 'success', 3000);
-                    else showToast(data.message, 'error', 5000);
-                }).catch(err => showToast('Terjadi kesalahan', 'error', 5000));
+                    if (data.status === 'success')
+                        showToast(data.message, 'success', 3000);
+                    else
+                        showToast(data.message, 'error', 5000); // <-- di sini menampilkan error printer
+                })
+                .catch(err => showToast('Terjadi kesalahan', 'error', 5000));
+
         });
     </script>
 </body>

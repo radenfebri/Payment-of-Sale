@@ -76,7 +76,8 @@
         "nama_pembeli": "Pelanggan",
         "id": 1758603751,
         "waktu": "2025-09-23 12:02:31",
-        "totalLaba": 1600
+        "totalLaba": 1600,
+        "recorded_in_keuangan": true
     },
     {
         "items": [
@@ -100,7 +101,8 @@
         "nama_pembeli": "Pelanggan",
         "id": 1758604062,
         "waktu": "2025-09-23 12:07:42",
-        "totalLaba": 500
+        "totalLaba": 500,
+        "recorded_in_keuangan": true
     },
     {
         "items": [
@@ -124,7 +126,8 @@
         "nama_pembeli": "Pelanggan",
         "id": 1758604132,
         "waktu": "2025-09-23 12:08:52",
-        "totalLaba": 1000
+        "totalLaba": 1000,
+        "recorded_in_keuangan": true
     },
     {
         "items": [
@@ -148,7 +151,8 @@
         "nama_pembeli": "Pelanggan",
         "id": 1758604274,
         "waktu": "2025-09-23 12:11:14",
-        "totalLaba": 500
+        "totalLaba": 500,
+        "recorded_in_keuangan": true
     },
     {
         "items": [
@@ -172,7 +176,8 @@
         "nama_pembeli": "Pelanggan",
         "id": 1758605133,
         "waktu": "2025-09-23 12:25:33",
-        "totalLaba": 4000
+        "totalLaba": 4000,
+        "recorded_in_keuangan": true
     },
     {
         "items": [
@@ -246,7 +251,8 @@
         "nama_pembeli": "Pelanggan",
         "id": 1758607428,
         "waktu": "2025-09-23 13:03:48",
-        "totalLaba": 5876
+        "totalLaba": 5876,
+        "recorded_in_keuangan": true
     },
     {
         "items": [
@@ -270,7 +276,8 @@
         "nama_pembeli": "Pelanggan",
         "id": 1758607780,
         "waktu": "2025-09-23 13:09:40",
-        "totalLaba": 2000
+        "totalLaba": 2000,
+        "recorded_in_keuangan": true
     },
     {
         "items": [
@@ -294,7 +301,8 @@
         "nama_pembeli": "Pelanggan",
         "id": 1758607919,
         "waktu": "2025-09-23 13:11:59",
-        "totalLaba": 500
+        "totalLaba": 500,
+        "recorded_in_keuangan": true
     },
     {
         "items": [
@@ -318,7 +326,8 @@
         "nama_pembeli": "Pelanggan",
         "id": 1758608232,
         "waktu": "2025-09-23 13:17:12",
-        "totalLaba": 4000
+        "totalLaba": 4000,
+        "recorded_in_keuangan": true
     },
     {
         "items": [
@@ -342,7 +351,8 @@
         "nama_pembeli": "Pelanggan",
         "id": 1758608322,
         "waktu": "2025-09-23 13:18:42",
-        "totalLaba": 4000
+        "totalLaba": 4000,
+        "recorded_in_keuangan": true
     },
     {
         "items": [
@@ -366,7 +376,8 @@
         "nama_pembeli": "Pelanggan",
         "id": 1758608469,
         "waktu": "2025-09-23 13:21:09",
-        "totalLaba": 300
+        "totalLaba": 300,
+        "recorded_in_keuangan": true
     },
     {
         "items": [
@@ -390,7 +401,8 @@
         "nama_pembeli": "Pelanggan",
         "id": 1758608699,
         "waktu": "2025-09-23 13:24:59",
-        "totalLaba": 500
+        "totalLaba": 500,
+        "recorded_in_keuangan": true
     },
     {
         "items": [
@@ -464,7 +476,8 @@
         "nama_pembeli": "Pelanggan",
         "id": 1758608740,
         "waktu": "2025-09-23 13:25:40",
-        "totalLaba": 7600
+        "totalLaba": 7600,
+        "recorded_in_keuangan": true
     },
     {
         "items": [
@@ -498,7 +511,8 @@
         "nama_pembeli": "Pelanggan",
         "id": 1758609431,
         "waktu": "2025-09-23 13:37:11",
-        "totalLaba": 3000
+        "totalLaba": 3000,
+        "recorded_in_keuangan": true
     },
     {
         "items": [
@@ -532,7 +546,8 @@
         "nama_pembeli": "Pelanggan",
         "id": 1758609438,
         "waktu": "2025-09-23 13:37:18",
-        "totalLaba": 3000
+        "totalLaba": 3000,
+        "recorded_in_keuangan": true
     },
     {
         "items": [
@@ -566,7 +581,8 @@
         "nama_pembeli": "Pelanggan",
         "id": 1758609682,
         "waktu": "2025-09-23 13:41:22",
-        "totalLaba": 3000
+        "totalLaba": 3000,
+        "recorded_in_keuangan": true
     },
     {
         "items": [
@@ -600,7 +616,8 @@
         "nama_pembeli": "Pelanggan",
         "id": 1758609687,
         "waktu": "2025-09-23 13:41:27",
-        "totalLaba": 3000
+        "totalLaba": 3000,
+        "recorded_in_keuangan": true
     },
     {
         "items": [
@@ -674,7 +691,8 @@
         "nama_pembeli": "Pelanggan",
         "id": 1758609717,
         "waktu": "2025-09-23 13:41:57",
-        "totalLaba": 5876
+        "totalLaba": 5876,
+        "recorded_in_keuangan": true
     },
     {
         "items": [
@@ -743,6 +761,67 @@
         "nama_pembeli": "Pelanggan",
         "id": 1758610271,
         "waktu": "2025-09-23 13:51:11",
-        "totalLaba": 1600
+        "totalLaba": 1600,
+        "recorded_in_keuangan": true
+    },
+    {
+        "items": [
+            {
+                "id": 1758442451,
+                "nama": "Susu Dancow Box",
+                "harga": 40000,
+                "jenisHarga": "grosir",
+                "qty": 1,
+                "stok": 40,
+                "hargaModal": 35000,
+                "laba": 5000
+            },
+            {
+                "id": 1758442451,
+                "nama": "Susu Dancow Box",
+                "harga": 42000,
+                "jenisHarga": "ecer",
+                "qty": 1,
+                "stok": 40,
+                "hargaModal": 35000,
+                "laba": 7000
+            }
+        ],
+        "total": 82000,
+        "diskon": 0,
+        "grandTotal": 82000,
+        "bayar": 0,
+        "kembalian": 0,
+        "hutang": 82000,
+        "nama_pembeli": "Pelanggan",
+        "id": 1758610576,
+        "waktu": "2025-09-23 13:56:16",
+        "totalLaba": 12000,
+        "recorded_in_keuangan": true
+    },
+    {
+        "items": [
+            {
+                "id": 1758442445,
+                "nama": "Indomie Ayam Bawang",
+                "harga": 3000,
+                "jenisHarga": "ecer",
+                "qty": 1,
+                "stok": 155,
+                "hargaModal": 2500,
+                "laba": 500
+            }
+        ],
+        "total": 3000,
+        "diskon": 0,
+        "grandTotal": 3000,
+        "bayar": 5000,
+        "kembalian": 2000,
+        "hutang": 0,
+        "nama_pembeli": "Jungkok",
+        "id": 1758611560,
+        "waktu": "2025-09-23 14:12:40",
+        "totalLaba": 500,
+        "recorded_in_keuangan": true
     }
 ]

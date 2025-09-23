@@ -458,29 +458,31 @@ if (ob_get_level()) ob_clean();
                 </button>
             </div>
 
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border border-gray-300">
-                    <thead>
-                        <tr class="bg-gray-200">
-                            <th class="p-3 border">ID Hutang</th>
-                            <th class="p-3 border">Nama Pelanggan</th>
-                            <th class="p-3 border">Jumlah Hutang</th>
-                            <th class="p-3 border">Tanggal Transaksi</th>
-                            <th class="p-3 border">Status</th>
-                            <th class="p-3 border">Tanggal Bayar</th>
-                            <th class="p-3 border">Aksi Status</th>
-                            <th class="p-3 border">Aksi Lainnya</th>
-                        </tr>
-                    </thead>
-                    <tbody id="daftarHutang">
-                        <!-- Data hutang akan ditampilkan di sini -->
-                        <tr>
-                            <td colspan="8" class="p-4 text-center text-gray-500">
-                                <i class="fas fa-spinner fa-spin mr-2"></i> Memuat data...
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+            <!-- Scrollable tabel -->
+            <div class="overflow-x-auto border rounded-lg">
+                <div class="overflow-x-auto max-h-[80vh]">
+                    <table class="w-full text-left border border-gray-300">
+                        <thead class="sticky top-0 bg-gray-200">
+                            <tr>
+                                <th class="p-3 border">ID Hutang</th>
+                                <th class="p-3 border">Nama Pelanggan</th>
+                                <th class="p-3 border">Jumlah Hutang</th>
+                                <th class="p-3 border">Tanggal Transaksi</th>
+                                <th class="p-3 border">Status</th>
+                                <th class="p-3 border">Tanggal Bayar</th>
+                                <th class="p-3 border">Aksi Status</th>
+                                <th class="p-3 border">Aksi Lainnya</th>
+                            </tr>
+                        </thead>
+                        <tbody id="daftarHutang">
+                            <tr>
+                                <td colspan="8" class="p-4 text-center text-gray-500">
+                                    <i class="fas fa-spinner fa-spin mr-2"></i> Memuat data...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <div class="mt-4 flex flex-col md:flex-row md:justify-between md:items-center gap-2">
@@ -488,6 +490,7 @@ if (ob_get_level()) ob_clean();
                 <p class="text-sm text-gray-600" id="searchInfo"></p>
             </div>
         </div>
+
 
         <!-- Modal Detail Hutang -->
         <div id="modalDetail" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
@@ -678,111 +681,106 @@ if (ob_get_level()) ob_clean();
                 }
 
                 container.innerHTML = `
-        <tr>
-            <td colspan="8" class="p-4 text-center text-gray-500">
-                <i class="fas fa-search mr-2"></i> ${message}
-            </td>
-        </tr>
+            <tr>
+                <td colspan="8" class="p-4 text-center text-gray-500">
+                    <i class="fas fa-search mr-2"></i> ${message}
+                </td>
+            </tr>
         `;
                 return;
             }
+
+            // ✅ Urutkan data terbaru di atas (descending) berdasarkan tanggal transaksi
+            filteredHutang.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
 
             let html = '';
             filteredHutang.forEach(hutang => {
                 const statusClass = hutang.status === 'lunas' ?
                     'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
 
-                const statusText = hutang.status === 'lunas' ?
-                    'Lunas' : 'Belum Lunas';
-
+                const statusText = hutang.status === 'lunas' ? 'Lunas' : 'Belum Lunas';
                 const tanggalBayar = hutang.tanggal_bayar ?
                     formatTanggalIndonesia(hutang.tanggal_bayar) : '-';
 
-                // Highlight hasil pencarian
                 const namaDisplay = currentSearchTerm ?
                     highlightText(hutang.nama, currentSearchTerm) : hutang.nama;
 
                 const idDisplay = currentSearchTerm ?
                     highlightText(hutang.id, currentSearchTerm) : hutang.id;
 
-                // Tampilkan keterangan jika ada (untuk hutang manual)
                 const keteranganDisplay = hutang.keterangan ?
                     `<br><small class="text-gray-500">${hutang.keterangan}</small>` : '';
 
-                // PERBAIKAN: Handle semua kemungkinan field
                 const jumlahAwal = hutang.jumlah_awal !== undefined ? hutang.jumlah_awal :
                     (hutang.jumlah_lama !== undefined ? hutang.jumlah_lama : hutang.jumlah);
 
-                // PERBAIKAN: Hanya tampilkan perubahan jika ada dan jumlah tidak sama dengan jumlah awal
                 const adaPerubahan = hutang.perubahan && parseInt(hutang.jumlah) !== parseInt(jumlahAwal);
 
-                const jumlahDisplay = adaPerubahan ?
-                    `<div class="flex flex-col">
+                const jumlahDisplay = adaPerubahan ? `
+            <div class="flex flex-col">
                 <span class="font-medium">${formatRupiah(hutang.jumlah)}</span>
                 <small class="text-xs ${hutang.perubahan.selisih > 0 ? 'text-red-600' : 'text-green-600'}">
                     ${hutang.perubahan.selisih > 0 ? '+' : ''}${formatRupiah(hutang.perubahan.selisih)} 
                     (${hutang.perubahan.tipe === 'tax' ? 'Tax' : 'Potongan'})
                 </small>
                 <small class="text-xs text-gray-500">Awal: ${formatRupiah(jumlahAwal)}</small>
-             </div>` :
+            </div>` :
                     formatRupiah(hutang.jumlah);
 
                 html += `
-        <tr class="border-b hover:bg-gray-50" data-id="${hutang.id}">
-            <td class="p-3 border">${idDisplay}</td>
-            <td class="p-3 border nama-pelanggan">
-                <div class="flex items-center justify-between">
-                    <span>${namaDisplay}${keteranganDisplay}</span>
-                    <button onclick="editNama('${hutang.id}', '${hutang.nama.replace(/'/g, "\\'")}')" 
-                            class="ml-2 text-blue-600 hover:text-blue-800 text-sm">
-                        <i class="fas fa-edit"></i>
+            <tr class="border-b hover:bg-gray-50" data-id="${hutang.id}">
+                <td class="p-3 border">${idDisplay}</td>
+                <td class="p-3 border nama-pelanggan">
+                    <div class="flex items-center justify-between">
+                        <span>${namaDisplay}${keteranganDisplay}</span>
+                        <button onclick="editNama('${hutang.id}', '${hutang.nama.replace(/'/g, "\\'")}')" 
+                                class="ml-2 text-blue-600 hover:text-blue-800 text-sm">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </div>
+                </td>
+                <td class="p-3 border font-medium jumlah-hutang">
+                    <div class="flex items-center justify-between">
+                        ${jumlahDisplay}
+                        <button onclick="editJumlah('${hutang.id}', '${hutang.nama.replace(/'/g, "\\'")}', ${hutang.jumlah})" 
+                                class="ml-2 text-blue-600 hover:text-blue-800 text-sm">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </div>
+                </td>
+                <td class="p-3 border">${formatTanggalIndonesia(hutang.tanggal)}</td>
+                <td class="p-3 border">
+                    <span class="text-xs px-2 py-1 rounded ${statusClass}">${statusText}</span>
+                </td>
+                <td class="p-3 border">${tanggalBayar}</td>
+                <td class="p-3 border">
+                    <div class="flex gap-2">
+                        ${hutang.tipe !== 'manual' ? `
+                        <button onclick="lihatDetail('${hutang.id}', '${hutang.id_penjualan}')" class="bg-blue-100 text-blue-600 px-2 py-1 rounded text-sm hover:bg-blue-200">
+                            <i class="fas fa-eye text-xs"></i>
+                        </button>` : ''}
+                        ${hutang.status !== 'lunas' ? `
+                        <button onclick="updateStatus('${hutang.id}', 'lunas')" class="bg-green-100 text-green-600 px-2 py-1 rounded text-sm hover:bg-green-200">
+                            <i class="fas fa-check text-xs"></i> Lunas
+                        </button>` : `
+                        <button onclick="updateStatus('${hutang.id}', 'belum lunas')" class="bg-yellow-100 text-yellow-600 px-2 py-1 rounded text-sm hover:bg-yellow-200">
+                            <i class="fas fa-undo text-xs"></i> Batal
+                        </button>`}
+                    </div>
+                </td>
+                <td class="p-3 border">
+                    <button onclick="hapusHutang('${hutang.id}', '${hutang.nama.replace(/'/g, "\\'")}')" 
+                            class="bg-red-100 text-red-600 px-2 py-1 rounded text-sm hover:bg-red-200">
+                        <i class="fas fa-trash text-xs"></i> Hapus
                     </button>
-                </div>
-            </td>
-            <td class="p-3 border font-medium jumlah-hutang">
-                <div class="flex items-center justify-between">
-                    ${jumlahDisplay}
-                    <button onclick="editJumlah('${hutang.id}', '${hutang.nama.replace(/'/g, "\\'")}', ${hutang.jumlah})" 
-                            class="ml-2 text-blue-600 hover:text-blue-800 text-sm">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                </div>
-            </td>
-            <td class="p-3 border">${formatTanggalIndonesia(hutang.tanggal)}</td>
-            <td class="p-3 border">
-                <span class="text-xs px-2 py-1 rounded ${statusClass}">${statusText}</span>
-            </td>
-            <td class="p-3 border">${tanggalBayar}</td>
-            <td class="p-3 border">
-                <div class="flex gap-2">
-                    ${hutang.tipe !== 'manual' ? `
-                    <button onclick="lihatDetail('${hutang.id}', '${hutang.id_penjualan}')" class="bg-blue-100 text-blue-600 px-2 py-1 rounded text-sm hover:bg-blue-200">
-                        <i class="fas fa-eye text-xs"></i>
-                    </button>
-                    ` : ''}
-                    ${hutang.status !== 'lunas' ? `
-                    <button onclick="updateStatus('${hutang.id}', 'lunas')" class="bg-green-100 text-green-600 px-2 py-1 rounded text-sm hover:bg-green-200">
-                        <i class="fas fa-check text-xs"></i> Lunas
-                    </button>
-                    ` : `
-                    <button onclick="updateStatus('${hutang.id}', 'belum lunas')" class="bg-yellow-100 text-yellow-600 px-2 py-1 rounded text-sm hover:bg-yellow-200">
-                        <i class="fas fa-undo text-xs"></i> Batal
-                    </button>
-                    `}
-                </div>
-            </td>
-            <td class="p-3 border">
-                <button onclick="hapusHutang('${hutang.id}', '${hutang.nama.replace(/'/g, "\\'")}')" 
-                        class="bg-red-100 text-red-600 px-2 py-1 rounded text-sm hover:bg-red-200">
-                    <i class="fas fa-trash text-xs"></i> Hapus
-                </button>
-            </td>
-        </tr>
+                </td>
+            </tr>
         `;
             });
 
             container.innerHTML = html;
         }
+
 
         // Fungsi untuk menyoroti teks hasil pencarian
         function highlightText(text, searchTerm) {

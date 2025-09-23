@@ -70,64 +70,115 @@ function printItemLine($nameQty, $subtotal, $width = 32)
 function cetakStruk($items, $settings, $nama_pelanggan = null, $waktu = null, $bayar = null, $hutang = 0)
 {
     try {
+        // Validasi input
+        if (empty($items)) {
+            return ["status" => "error", "message" => "Tidak ada item untuk dicetak"];
+        }
+
+        if (empty($settings['printer_name'])) {
+            return ["status" => "error", "message" => "Nama printer belum diatur. Silakan setting printer terlebih dahulu."];
+        }
+
         $nama_pelanggan = $nama_pelanggan ?: "Pelanggan" . rand(100, 999);
-        $waktu = $waktu ?: date('Y-m-d H:i:s');
+        $waktu = $waktu ?: date('d/m/Y H:i:s'); // Format lebih singkat
 
         $total = 0;
         foreach ($items as $item) {
+            // Validasi item
+            if (!isset($item['nama']) || !isset($item['qty']) || !isset($item['harga'])) {
+                return ["status" => "error", "message" => "Format item tidak valid"];
+            }
             $total += $item['qty'] * $item['harga'];
         }
 
         $kembalian = ($bayar !== null) ? max($bayar - $total, 0) : 0;
 
-        $connector = new Mike42\Escpos\PrintConnectors\WindowsPrintConnector($settings['printer_name']);
-        $printer = new Mike42\Escpos\Printer($connector);
+        // Cek koneksi printer
+        try {
+            $connector = new Mike42\Escpos\PrintConnectors\WindowsPrintConnector($settings['printer_name']);
+            $printer = new Mike42\Escpos\Printer($connector);
+        } catch (Exception $e) {
+            return ["status" => "error", "message" => "Printer '{$settings['printer_name']}' tidak ditemukan. Pastikan printer sudah terhubung dan nama sesuai."];
+        }
 
         // Header
         $printer->setJustification(Mike42\Escpos\Printer::JUSTIFY_CENTER);
         $printer->setEmphasis(true);
         $printer->text($settings['nama_toko'] . "\n");
         $printer->setEmphasis(false);
-        $printer->text($settings['alamat'] . "\n");
+        $printer->text(wordwrap($settings['alamat'], 32, "\n") . "\n");
         $printer->text("Telp/WA: " . $settings['telepon'] . "\n");
         $printer->text(str_repeat("-", 32) . "\n");
 
         // Info pelanggan & tanggal
         $printer->setJustification(Mike42\Escpos\Printer::JUSTIFY_LEFT);
-        $printer->text("Nama: " . $nama_pelanggan . "\n");
-        $printer->text("Tanggal : " . $waktu . "\n");
+        $printer->text("Pelanggan: " . substr($nama_pelanggan, 0, 20) . "\n");
+        $printer->text("Waktu    : " . $waktu . "\n");
         $printer->text(str_repeat("-", 32) . "\n");
 
-        // Items
+        // Items dengan format yang lebih rapi
         foreach ($items as $item) {
-            $printer->text(printItemLine("{$item['nama']} x{$item['qty']}", "Rp " . number_format($item['qty'] * $item['harga'])));
+            $namaItem = substr($item['nama'], 0, 20); // Batasi panjang nama
+            $qtyHarga = "x" . $item['qty'] . " @Rp " . number_format($item['harga']);
+            $subtotal = "Rp " . number_format($item['qty'] * $item['harga']);
+
+            $printer->text($namaItem . "\n");
+            $printer->text(str_pad($qtyHarga, 20) . str_pad($subtotal, 12, " ", STR_PAD_LEFT) . "\n");
         }
 
         $printer->text(str_repeat("-", 32) . "\n");
 
-        // Total
+        // Total dan pembayaran
         $printer->setEmphasis(true);
-        $printer->text(printLine("TOTAL", "Rp " . number_format($total)));
+        $printer->text(str_pad("TOTAL:", 20) . str_pad("Rp " . number_format($total), 12, " ", STR_PAD_LEFT) . "\n");
 
-        // Tambahkan hutang jika > 0
-        if ($hutang > 0) {
-            $printer->text(printLine("HUTANG", "Rp " . number_format($hutang)));
+        if ($bayar !== null) {
+            $printer->text(str_pad("BAYAR:", 20) . str_pad("Rp " . number_format($bayar), 12, " ", STR_PAD_LEFT) . "\n");
+            $printer->text(str_pad("KEMBALI:", 20) . str_pad("Rp " . number_format($kembalian), 12, " ", STR_PAD_LEFT) . "\n");
         }
 
-        // Kembalian
-        $printer->text(printLine("KEMBALIAN", "Rp " . number_format($kembalian)));
+        // Hutang
+        if ($hutang > 0) {
+            $printer->text(str_pad("HUTANG:", 20) . str_pad("Rp " . number_format($hutang), 12, " ", STR_PAD_LEFT) . "\n");
+        }
+
         $printer->setEmphasis(false);
         $printer->text(str_repeat("-", 32) . "\n");
 
-        // Footer
+        // Footer dengan wordwrap
         $printer->setJustification(Mike42\Escpos\Printer::JUSTIFY_CENTER);
-        $printer->text(!empty($settings['footer']) ? $settings['footer'] . "\n" : "Terima kasih sudah berbelanja!\n");
+        $footerText = !empty($settings['footer']) ? $settings['footer'] : "Terima kasih sudah berbelanja!";
+        $printer->text(wordwrap($footerText, 32) . "\n");
+
+        // Tambahkan informasi penting
+        $printer->text("Simpan struk ini\n");
+        $printer->text("untuk bukti transaksi\n");
 
         $printer->cut();
         $printer->close();
 
-        return ["status" => "success", "message" => "Cetak berhasil!"];
+        return [
+            "status" => "success",
+            "message" => "Struk berhasil dicetak ke printer: {$settings['printer_name']}",
+            "detail" => [
+                "pelanggan" => $nama_pelanggan,
+                "total" => $total,
+                "items" => count($items)
+            ]
+        ];
     } catch (Exception $e) {
-        return ["status" => "error", "message" => "Gagal mencetak: " . $e->getMessage()];
+        // Pesan error yang lebih informatif
+        $errorMsg = "Gagal mencetak struk: ";
+
+        if (strpos($e->getMessage(), 'cannot be found') !== false) {
+            $errorMsg .= "Printer '{$settings['printer_name']}' tidak ditemukan. ";
+            $errorMsg .= "Periksa koneksi dan nama printer.";
+        } elseif (strpos($e->getMessage(), 'access denied') !== false) {
+            $errorMsg .= "Akses printer ditolak. Pastikan aplikasi memiliki izin akses printer.";
+        } else {
+            $errorMsg .= $e->getMessage();
+        }
+
+        return ["status" => "error", "message" => $errorMsg];
     }
 }
