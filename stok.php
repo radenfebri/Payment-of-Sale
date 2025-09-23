@@ -1,5 +1,6 @@
 <?php
 // stok.php - Halaman khusus manajemen stok
+date_default_timezone_set('Asia/Jakarta');
 
 // Pastikan folder data ada
 $dataDir = __DIR__ . "/data";
@@ -200,10 +201,59 @@ if (isset($_GET['action'])) {
                 echo json_encode([]);
             }
             exit;
+
+        case 'hapus_riwayat':
+            $id_barang = $input['id_barang'] ?? null;
+
+            if (file_exists($riwayatFile)) {
+                $riwayat = json_decode(file_get_contents($riwayatFile), true) ?? [];
+
+                if ($id_barang && $id_barang !== 'all') {
+                    // Hapus semua riwayat milik barang tertentu
+                    $riwayat = array_filter($riwayat, function ($item) use ($id_barang) {
+                        return $item['id_barang'] != $id_barang;
+                    });
+                    $message = 'Semua riwayat barang berhasil dihapus';
+                } else {
+                    // Kalau tidak ada id_barang atau id_barang='all', hapus semua riwayat
+                    $riwayat = [];
+                    $message = 'Semua riwayat stok berhasil dihapus';
+                }
+
+                file_put_contents($riwayatFile, json_encode(array_values($riwayat), JSON_PRETTY_PRINT));
+                echo json_encode(['success' => true, 'message' => $message]);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'File riwayat tidak ditemukan']);
+            }
+            exit;
+
+        case 'hapus_riwayat_entry':
+            $id_barang = $input['id_barang'] ?? null;
+            $waktu = $input['waktu'] ?? null;
+
+            if (file_exists($riwayatFile)) {
+                $riwayat = json_decode(file_get_contents($riwayatFile), true);
+
+                if ($id_barang && $waktu) {
+                    // Hapus hanya entry dengan id_barang + waktu sesuai
+                    $riwayat = array_filter($riwayat, function ($item) use ($id_barang, $waktu) {
+                        return !($item['id_barang'] == $id_barang && $item['waktu'] == $waktu);
+                    });
+                    $message = 'Riwayat berhasil dihapus';
+                } else {
+                    echo json_encode(['success' => false, 'message' => 'Data tidak lengkap']);
+                    exit;
+                }
+
+                file_put_contents($riwayatFile, json_encode(array_values($riwayat), JSON_PRETTY_PRINT));
+                echo json_encode(['success' => true, 'message' => $message]);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'File riwayat tidak ditemukan']);
+            }
+            exit;
     }
 }
 
-// Jika tidak ada parameter action, tampilkan halaman HTML
 ?>
 
 <!DOCTYPE html>
@@ -366,11 +416,19 @@ if (isset($_GET['action'])) {
     <!-- Main Content -->
     <main class="flex-1 p-6">
         <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-bold text-gray-800">Manajemen Stok Barang</h2>
+            <h2 class="text-2xl font-bold text-gray-800">📊 Manajemen Stok Barang</h2>
+            <!-- Di dalam div dengan class flex justify-between items-center mb-6 -->
             <div class="flex space-x-2">
-                <button onclick="exportData()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center">
+                <!-- Tombol yang sudah ada -->
+                <button onclick="openExportModal()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center">
                     <i class="fas fa-file-export mr-2"></i> Export
                 </button>
+
+                <!-- Tombol Hapus Riwayat -->
+                <button onclick="hapusSemuaRiwayat()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center">
+                    <i class="fas fa-trash-alt mr-2"></i> Hapus Riwayat
+                </button>
+
                 <button onclick="openTambahStokModal()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center">
                     <i class="fas fa-plus mr-2"></i> Tambah Stok
                 </button>
@@ -560,58 +618,105 @@ if (isset($_GET['action'])) {
     </div>
 
     <!-- Modal Riwayat Stok -->
-    <div id="modalRiwayat" class="fixed inset-0 z-50 flex items-center justify-center hidden modal-overlay">
-        <div class="modal-container bg-white w-11/12 md:max-w-4xl mx-auto rounded shadow-lg z-50 overflow-y-auto max-h-screen">
+    <div id="modalRiwayat" class="fixed inset-0 z-50 flex items-center justify-center hidden modal-overlay bg-black bg-opacity-50 transition-opacity duration-300">
+        <div class="modal-container bg-white w-11/12 md:max-w-5xl mx-auto rounded-2xl shadow-2xl z-50 overflow-y-auto max-h-screen transform transition-all duration-300 scale-95">
             <div class="p-6">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-2xl font-semibold text-gray-800" id="riwayatTitle">Riwayat Stok Barang</h3>
-                    <button onclick="tutupModalRiwayat()" class="text-gray-500 hover:text-gray-700 text-xl">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
 
-                <div class="mb-4 bg-blue-50 p-4 rounded-lg">
-                    <div class="flex items-center">
-                        <div class="mr-4 text-blue-500">
-                            <i class="fas fa-info-circle text-2xl"></i>
-                        </div>
-                        <div>
-                            <p class="text-blue-800 font-medium">Informasi Stok</p>
-                            <p id="riwayatInfo" class="text-blue-600"></p>
-                        </div>
+                <!-- Header -->
+                <div class="flex justify-between items-center mb-6 border-b pb-4">
+                    <div>
+                        <h3 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                            <i class="fas fa-box-open text-blue-600"></i>
+                            <span id="riwayatTitle">Riwayat Stok Barang</span>
+                        </h3>
+                        <p id="riwayatInfo" class="text-sm text-gray-500 mt-1"></p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="tutupModalRiwayat()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1.5 rounded-lg shadow-sm">
+                            <i class="fas fa-times"></i> Close
+                        </button>
                     </div>
                 </div>
 
+                <!-- Tabel Riwayat -->
                 <div class="overflow-x-auto rounded-lg shadow">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-100">
+                    <table class="min-w-full divide-y divide-gray-200 text-sm">
+                        <thead class="bg-blue-50">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Waktu</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Jenis</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Jumlah</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Stok Sebelum</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Stok Sesudah</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Keterangan</th>
+                                <th class="px-6 py-3 text-left font-semibold text-gray-700 uppercase tracking-wider">Waktu</th>
+                                <th class="px-6 py-3 text-left font-semibold text-gray-700 uppercase tracking-wider">Jenis</th>
+                                <th class="px-6 py-3 text-left font-semibold text-gray-700 uppercase tracking-wider">Jumlah</th>
+                                <th class="px-6 py-3 text-left font-semibold text-gray-700 uppercase tracking-wider">Stok Sebelum</th>
+                                <th class="px-6 py-3 text-left font-semibold text-gray-700 uppercase tracking-wider">Stok Sesudah</th>
+                                <th class="px-6 py-3 text-left font-semibold text-gray-700 uppercase tracking-wider">Keterangan</th>
+                                <th class="px-6 py-3 text-left font-semibold text-gray-700 uppercase tracking-wider">Aksi</th>
                             </tr>
                         </thead>
-                        <tbody id="riwayatTableBody" class="bg-white divide-y divide-gray-200">
+                        <tbody id="riwayatTableBody" class="bg-white divide-y divide-gray-100">
                             <!-- Data riwayat akan diisi oleh JavaScript -->
                         </tbody>
                     </table>
-
                 </div>
 
-                <div id="riwayatEmptyState" class="hidden text-center py-8">
-                    <i class="fas fa-history text-4xl text-gray-300 mb-4"></i>
-                    <p class="text-gray-500">Tidak ada riwayat stok untuk barang ini</p>
+                <!-- Empty State -->
+                <div id="riwayatEmptyState" class="hidden text-center py-10">
+                    <i class="fas fa-history text-5xl text-gray-300 mb-4 animate-pulse"></i>
+                    <p class="text-gray-500 font-medium">Tidak ada riwayat stok untuk barang ini</p>
+                    <p class="text-sm text-gray-400">Semua perubahan stok akan tercatat di sini secara otomatis</p>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Modal Hapus Riwayat -->
+    <div id="hapusRiwayatModal" class="fixed inset-0 z-50 flex items-center justify-center hidden modal-overlay">
+        <div class="modal-container bg-white w-11/12 md:max-w-md mx-auto rounded shadow-lg z-50 overflow-y-auto">
+            <div class="px-6 py-4 border-b">
+                <h3 class="text-xl font-semibold text-gray-800">Hapus Riwayat Stok</h3>
+            </div>
+            <div class="px-6 py-4">
+                <p class="text-gray-700 mb-4" id="hapusRiwayatMessage">Apa Anda yakin ingin menghapus semua riwayat stok?</p>
+                <input type="hidden" id="hapusRiwayatBarangId">
+            </div>
+            <div class="px-6 py-4 border-t flex justify-end">
+                <button onclick="closeHapusRiwayatModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded mr-2">
+                    Batal
+                </button>
+                <button onclick="hapusRiwayat()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">
+                    Hapus
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Export -->
+    <div id="exportModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-lg w-80 p-5">
+            <h2 class="text-lg font-semibold mb-4">Pilih Jenis Export</h2>
+            <div class="space-y-3">
+                <button onclick="exportData('semua')"
+                    class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg">
+                    Semua Produk
+                </button>
+                <button onclick="exportData('limit')"
+                    class="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg">
+                    Produk Habis / Hampir Habis
+                </button>
+            </div>
+            <button onclick="closeExportModal()"
+                class="mt-4 w-full bg-gray-400 hover:bg-gray-500 text-white py-2 rounded-lg">
+                Batal
+            </button>
         </div>
     </div>
 
     <script>
         // Variabel global untuk menyimpan data barang
         let barangData = [];
+        let currentRiwayatBarangId = null;
+        let currentRiwayatNama = null;
+        let currentRiwayatKode = null;
+        let currentRiwayatStok = null;
 
         // Fungsi untuk memuat data dari server
         async function loadBarangData() {
@@ -710,7 +815,7 @@ if (isset($_GET['action'])) {
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">${barang.stokMin}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="badge ${status.class}">${status.status}</span>
+                        <span class="badge ${status.class} inline-flex items-center justify-center min-w-[80px]">${status.status}</span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">${barang.satuan}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
@@ -791,19 +896,24 @@ if (isset($_GET['action'])) {
 
         // Fungsi untuk menambah stok barang tertentu
         function tambahStokBarang(barangId) {
-            const barang = barangData.find(b => b.id === barangId);
+            const barang = barangData.find(b => String(b.id) === String(barangId));
             if (barang) {
                 openTambahStokModal();
-                document.getElementById('barangSelectTambah').value = barangId;
+                // setTimeout agar select sudah terisi dulu
+                setTimeout(() => {
+                    document.getElementById('barangSelectTambah').value = String(barangId);
+                }, 100);
             }
         }
 
         // Fungsi untuk mengurangi stok barang tertentu
         function kurangiStokBarang(barangId) {
-            const barang = barangData.find(b => b.id === barangId);
+            const barang = barangData.find(b => String(b.id) === String(barangId));
             if (barang) {
                 openKurangiStokModal();
-                document.getElementById('barangSelectKurangi').value = barangId;
+                setTimeout(() => {
+                    document.getElementById('barangSelectKurangi').value = String(barangId);
+                }, 100);
             }
         }
 
@@ -941,8 +1051,95 @@ if (isset($_GET['action'])) {
             }
         }
 
+        // Fungsi untuk membuka modal hapus riwayat
+        function openHapusRiwayatModal(barangId = null, barangNama = null) {
+            document.getElementById('hapusRiwayatModal').classList.remove('hidden');
+            document.body.classList.add('modal-open');
+
+            if (barangId && barangId !== 'all') {
+                document.getElementById('hapusRiwayatBarangId').value = barangId;
+                const barang = barangData.find(b => b.id === barangId);
+                const namaBarang = barang ? barang.nama : barangNama;
+                document.getElementById('hapusRiwayatMessage').innerHTML =
+                    `Apa Anda yakin ingin menghapus <strong>semua riwayat stok</strong> untuk <strong>${namaBarang}</strong>?<br><br>
+            <span class="text-red-600 font-semibold"> Tindakan ini tidak dapat dibatalkan! </span>`;
+            } else {
+                document.getElementById('hapusRiwayatBarangId').value = 'all';
+                document.getElementById('hapusRiwayatMessage').innerHTML =
+                    'Apa Anda yakin ingin menghapus <strong>semua riwayat stok</strong> dari <strong>semua barang</strong>?<br><br> <span class="text-red-600 font-semibold" > Tindakan ini tidak dapat dibatalkan! </span>';
+            }
+        }
+
+        // Fungsi untuk menutup modal hapus riwayat
+        function closeHapusRiwayatModal() {
+            document.getElementById('hapusRiwayatModal').classList.add('hidden');
+            document.body.classList.remove('modal-open');
+        }
+
+        // Fungsi untuk menghapus riwayat
+        async function hapusRiwayat() {
+            const barangId = document.getElementById('hapusRiwayatBarangId').value;
+
+            try {
+                const response = await fetch('stok.php?action=hapus_riwayat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        id_barang: barangId === 'all' ? null : barangId
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(result.message);
+                    closeHapusRiwayatModal();
+
+                    // Jika sedang melihat riwayat barang tertentu, perbarui tampilan
+                    if (currentRiwayatBarangId && !document.getElementById('modalRiwayat').classList.contains('hidden')) {
+                        // Refresh tampilan riwayat jika yang dihapus adalah riwayat barang yang sedang dilihat
+                        if (barangId === 'all' || barangId === currentRiwayatBarangId) {
+                            const barang = barangData.find(b => b.id === currentRiwayatBarangId);
+                            if (barang) {
+                                lihatRiwayat(currentRiwayatBarangId, barang.nama, barang.kodeProduk, barang.stok);
+                            }
+                        }
+                    }
+
+                    // Jika menghapus semua riwayat, tutup modal riwayat jika terbuka
+                    if (barangId === 'all' && !document.getElementById('modalRiwayat').classList.contains('hidden')) {
+                        tutupModalRiwayat();
+                    }
+
+                } else {
+                    alert('Gagal: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Terjadi kesalahan saat menghapus riwayat');
+            }
+        }
+
+        // Fungsi untuk menghapus riwayat barang yang sedang dilihat
+        function hapusRiwayatBarang() {
+            if (currentRiwayatBarangId) {
+                const barang = barangData.find(b => b.id === currentRiwayatBarangId);
+                if (barang) {
+                    openHapusRiwayatModal(currentRiwayatBarangId, barang.nama);
+                }
+            }
+        }
+
         // Fungsi untuk melihat riwayat stok
         async function lihatRiwayat(barangId, namaBarang, kodeBarang, stokSekarang) {
+            // Simpan data barang yang sedang dilihat
+            currentRiwayatBarangId = barangId;
+            currentRiwayatNama = namaBarang;
+            currentRiwayatKode = kodeBarang;
+            currentRiwayatStok = stokSekarang;
+
             try {
                 const response = await fetch(`stok.php?action=get_riwayat&id=${barangId}`);
                 const riwayat = await response.json();
@@ -955,7 +1152,7 @@ if (isset($_GET['action'])) {
                 document.getElementById('riwayatTitle').textContent = `Riwayat Stok: ${namaBarang}`;
                 document.getElementById('riwayatInfo').textContent = `${kodeBarang} - Stok saat ini: ${stokSekarang}`;
 
-                // Isi tabel riwayat
+                // Render tabel riwayat
                 const tableBody = document.getElementById('riwayatTableBody');
                 const emptyState = document.getElementById('riwayatEmptyState');
 
@@ -974,24 +1171,33 @@ if (isset($_GET['action'])) {
                     const row = document.createElement('tr');
                     row.className = 'fade-in';
 
-                    // Format waktu menjadi lebih mudah dibaca
                     const waktu = new Date(item.waktu);
-                    const waktuFormatted = waktu.toLocaleString('id-ID');
+                    const waktuFormatted = waktu.toLocaleString('id-ID', {
+                        timeZone: 'Asia/Jakarta'
+                    });
 
                     row.innerHTML = `
-                        <td class="px-6 py-4 whitespace-nowrap">${waktuFormatted}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="badge ${item.jenis === 'penambahan' ? 'badge-success' : 'badge-danger'}">
-                                ${item.jenis === 'penambahan' ? 'Penambahan' : 'Pengurangan'}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap font-bold ${item.jenis === 'penambahan' ? 'text-green-600' : 'text-red-600'}">
-                            ${item.jenis === 'penambahan' ? '+' : '-'}${item.jumlah}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">${item.stok_sebelum}</td>
-                        <td class="px-6 py-4 whitespace-nowrap font-bold">${item.stok_sesudah}</td>
-                        <td class="px-6 py-4">${item.keterangan || '-'}</td>
-                    `;
+                <td class="px-6 py-4 whitespace-nowrap">${waktuFormatted}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 py-1 rounded-full text-xs font-semibold ${item.jenis === 'penambahan' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                        ${item.jenis === 'penambahan' ? 'Penambahan' : 'Pengurangan'}
+                    </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap font-bold ${item.jenis === 'penambahan' ? 'text-green-600' : 'text-red-600'}">
+                    ${item.jenis === 'penambahan' ? '+' : '-'}${item.jumlah}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">${item.stok_sebelum}</td>
+                <td class="px-6 py-4 whitespace-nowrap font-bold">${item.stok_sesudah}</td>
+                <td class="px-6 py-4">${item.keterangan || '-'}</td>
+                <td class="px-6 py-4">
+                    <button onclick="hapusRiwayatEntry('${item.id_barang}', '${item.waktu}')" 
+                        class="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-100 transition-colors" 
+                        title="Hapus riwayat ini">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </td>
+            `;
+
                     tableBody.appendChild(row);
                 });
 
@@ -1000,6 +1206,7 @@ if (isset($_GET['action'])) {
                 alert('Terjadi kesalahan saat memuat riwayat stok');
             }
         }
+
 
         // Fungsi untuk menutup modal riwayat
         function tutupModalRiwayat() {
@@ -1036,11 +1243,89 @@ if (isset($_GET['action'])) {
             renderBarangTable(filteredBarang);
         }
 
-        // Fungsi untuk export data
-        function exportData() {
-            // Implementasi export data ke CSV atau Excel
-            alert('Fitur export akan diimplementasikan di sini');
+        function openExportModal() {
+            document.getElementById("exportModal").classList.remove("hidden");
         }
+
+        function closeExportModal() {
+            document.getElementById("exportModal").classList.add("hidden");
+        }
+
+        async function exportData(mode) {
+            try {
+                // Ambil langsung dari barang.json
+                const response = await fetch("data/barang.json");
+                const allBarang = await response.json();
+
+                let dataExport;
+                if (mode === "semua") {
+                    dataExport = allBarang; // semua
+                } else {
+                    dataExport = allBarang.filter(b => b.stok <= (b.stokMin || 0)); // stok limit
+                }
+
+                if (!dataExport.length) {
+                    alert("Tidak ada data yang bisa dicetak.");
+                    return;
+                }
+
+                let content = `
+                        <html>
+                        <head>
+                            <style>
+                                @page { size: 58mm auto; margin: 0; }
+                                body { font-family: monospace; font-size: 11px; margin: 0; padding: 0; }
+                                .struk { width: 58mm; padding: 5px; }
+                                h3 { text-align: center; margin: 5px 0; }
+                                table { width: 100%; border-collapse: collapse; }
+                                td { padding: 2px 0; vertical-align: top; }
+                                .line { border-top: 1px dashed #000; margin: 4px 0; }
+                            </style>
+                        </head>
+                        <body onload="window.print(); window.close();">
+                            <div class="struk">
+                                <h3>Data Stok Barang</h3>
+                                <div class="line"></div>
+                                <table>
+                                    <tr>
+                                        <td><b>Nama</b></td>
+                                        <td style="text-align:right"><b>Stok</b></td>
+                                    </tr>`;
+
+                                        dataExport.forEach(item => {
+                                            content += `
+                                    <tr>
+                                        <td>${item.nama}</td>
+                                        <td style="text-align:right">${item.stok}</td>
+                                    </tr>`;
+                                        });
+
+                                        content += `
+                                </table>
+                                <div class="line"></div>
+                                <p style="text-align:center">Dicetak: ${new Date().toLocaleString()}</p>
+                            </div>
+                        </body>
+                        </html>`;
+
+
+
+                // Buka jendela print thermal
+                const printWindow = window.open("", "_blank");
+                printWindow.document.open();
+                printWindow.document.write(content);
+                printWindow.document.close();
+
+                closeExportModal(); // tutup modal setelah export
+
+            } catch (error) {
+                console.error("Export error:", error);
+                alert("Gagal export data");
+            }
+        }
+
+
+
 
         // Inisialisasi halaman saat pertama kali dimuat
         document.addEventListener('DOMContentLoaded', function() {
@@ -1062,6 +1347,43 @@ if (isset($_GET['action'])) {
                 });
             });
         });
+
+        async function hapusRiwayatEntry(id_barang, waktu) {
+            if (!confirm("Yakin ingin menghapus riwayat ini?")) return;
+
+            try {
+                const response = await fetch("stok.php?action=hapus_riwayat_entry", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        id_barang: id_barang,
+                        waktu: waktu
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(result.message);
+                    // Refresh tampilan riwayat
+                    const barang = barangData.find(b => b.id === id_barang);
+                    if (barang) {
+                        lihatRiwayat(id_barang, barang.nama, barang.kodeProduk, barang.stok);
+                    }
+                } else {
+                    alert("Gagal: " + result.message);
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                alert("Terjadi kesalahan saat menghapus riwayat");
+            }
+        }
+
+        function hapusSemuaRiwayat() {
+            openHapusRiwayatModal('all');
+        }
     </script>
 </body>
 

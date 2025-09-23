@@ -3,7 +3,7 @@
         "id": "1758382403",
         "kodeProduk": "TMY344985",
         "nama": "Rinso Box",
-        "stok": 77,
+        "stok": 123,
         "stokMin": 10,
         "satuan": "box",
         "satuanHarga": [
@@ -19,7 +19,7 @@
         "id": "1758382503",
         "kodeProduk": "TMY458579",
         "nama": "Rinso Pcs",
-        "stok": 8,
+        "stok": 20,
         "stokMin": 10,
         "satuan": "pcs",
         "satuanHarga": [
@@ -115,7 +115,7 @@
         "id": 1758442446,
         "kodeProduk": "TMY291388",
         "nama": "Aqua Botol 600ml",
-        "stok": 300,
+        "stok": 420,
         "stokMin": 50,
         "satuan": "pcs",
         "satuanHarga": [

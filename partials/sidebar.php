@@ -12,6 +12,7 @@
         <a href="history.php" class="block px-3 py-2 rounded hover:bg-gray-700 <?= basename($_SERVER['PHP_SELF']) == 'history.php' ? 'bg-gray-700' : '' ?>">📋 History Transaksi</a>
         <a href="keuangan.php" class="block px-3 py-2 rounded hover:bg-gray-700 <?= basename($_SERVER['PHP_SELF']) == 'keuangan.php' ? 'bg-gray-700' : '' ?>">💰 Keuangan</a>
         <a href="piutang.php" class="block px-3 py-2 rounded hover:bg-gray-700 <?= basename($_SERVER['PHP_SELF']) == 'piutang.php' ? 'bg-gray-700' : '' ?>">📑 Piutang</a>
+        <a href="setting.php" class="block px-3 py-2 rounded hover:bg-gray-700 <?= basename($_SERVER['PHP_SELF']) == 'setting.php' ? 'bg-gray-700' : '' ?>">🛠️ Setting</a>
     </nav>
     <div class="p-4 border-t border-gray-700 text-sm text-gray-400">
         © 2025 POS App

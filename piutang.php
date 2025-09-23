@@ -418,7 +418,7 @@ if (ob_get_level()) ob_clean();
     </div>
 
     <main class="flex-1 p-6">
-        <h2 class="text-2xl font-semibold mb-4">📋 Daftar Piutang</h2>
+        <h2 class="text-2xl font-semibold mb-4">📑 Daftar Piutang</h2>
 
         <div class="bg-white p-6 rounded-lg shadow-lg">
             <div class="flex justify-between items-center mb-6">
