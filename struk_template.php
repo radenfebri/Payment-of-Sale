@@ -66,7 +66,6 @@ function printItemLine($nameQty, $subtotal, $width = 32)
 }
 
 
-
 function cetakStruk($items, $settings, $nama_pelanggan = null, $waktu = null, $bayar = null, $hutang = 0)
 {
     try {
@@ -76,7 +75,15 @@ function cetakStruk($items, $settings, $nama_pelanggan = null, $waktu = null, $b
         }
 
         if (empty($settings['printer_name'])) {
-            return ["status" => "error", "message" => "Nama printer belum diatur. Silakan setting printer terlebih dahulu."];
+            return ["status" => "error", "message" => "Nama printer belum diatur"];
+        }
+
+        // Cek koneksi printer
+        try {
+            $connector = new Mike42\Escpos\PrintConnectors\WindowsPrintConnector($settings['printer_name']);
+            $printer = new Mike42\Escpos\Printer($connector);
+        } catch (Exception $e) {
+            return ["status" => "error", "message" => "Printer '{$settings['printer_name']}' tidak ditemukan. Pastikan printer sudah terhubung dan nama sesuai."];
         }
 
         $nama_pelanggan = $nama_pelanggan ?: "Pelanggan" . rand(100, 999);
@@ -92,14 +99,6 @@ function cetakStruk($items, $settings, $nama_pelanggan = null, $waktu = null, $b
         }
 
         $kembalian = ($bayar !== null) ? max($bayar - $total, 0) : 0;
-
-        // Cek koneksi printer
-        try {
-            $connector = new Mike42\Escpos\PrintConnectors\WindowsPrintConnector($settings['printer_name']);
-            $printer = new Mike42\Escpos\Printer($connector);
-        } catch (Exception $e) {
-            return ["status" => "error", "message" => "Printer '{$settings['printer_name']}' tidak ditemukan. Pastikan printer sudah terhubung dan nama sesuai."];
-        }
 
         // Header
         $printer->setJustification(Mike42\Escpos\Printer::JUSTIFY_CENTER);

@@ -1,6 +1,8 @@
 <?php
 require "struk_template.php";
 
+date_default_timezone_set('Asia/Jakarta'); // pastikan tanggal struk sesuai GMT+7
+
 $settingFile = __DIR__ . "/data/setting.json";
 $settings = json_decode(file_get_contents($settingFile), true);
 
@@ -11,7 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['tes_printer'])) {
     $settings['telepon'] = $_POST['telepon'] ?? $settings['telepon'];
     $settings['printer_name'] = $_POST['printer_name'] ?? $settings['printer_name'];
     $settings['paper_size'] = $_POST['paper_size'] ?? $settings['paper_size'];
-    $settings['footer'] = $_POST['footer'] ?? $settings['footer'] ?? ''; // tambah footer
+    $settings['footer'] = $_POST['footer'] ?? $settings['footer'] ?? '';
     $settings['auto_print'] = isset($_POST['auto_print']);
     file_put_contents($settingFile, json_encode($settings, JSON_PRETTY_PRINT));
     $saved = true;
@@ -25,10 +27,289 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tes_printer'])) {
         ["nama" => "Indomie Goreng", "qty" => 5, "harga" => 3500],
     ];
 
-    // Hanya 2 parameter
     echo json_encode(cetakStruk($items, $settings));
     exit;
 }
+
+
+if (isset($_GET['action'])) {
+    $action = $_GET['action'];
+
+    switch ($action) {
+        case 'backup_data':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                http_response_code(405);
+                echo "Method Not Allowed";
+                exit;
+            }
+            backupData();
+            break;
+
+        case 'import_data':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                http_response_code(405);
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Method not allowed']);
+                exit;
+            }
+            importData();
+            break;
+
+        default:
+            echo "Action tidak dikenali!";
+            break;
+    }
+}
+
+function backupData()
+{
+    $dataDir = __DIR__ . '/data';
+    $files   = glob($dataDir . '/*.json');
+    if (!$files) {
+        http_response_code(404);
+        exit('Tidak ada file JSON.');
+    }
+
+    $timestamp    = date('Ymd_His');
+    $downloadName = "backup_json_{$timestamp}.tar.gz";
+    $tmpTar       = sys_get_temp_dir() . DIRECTORY_SEPARATOR . "backup_json_{$timestamp}.tar";
+
+    try {
+        $tar = new PharData($tmpTar);
+        foreach ($files as $f) {
+            $tar->addFile($f, basename($f));
+        }
+        $tar->compress(Phar::GZ);
+        unset($tar);
+
+        @unlink($tmpTar); // hapus file .tar, biar tinggal .tar.gz
+        $tmpFile = $tmpTar . '.gz';
+    } catch (Exception $e) {
+        http_response_code(500);
+        exit('Gagal membuat arsip: ' . $e->getMessage());
+    }
+
+    if (ob_get_level()) ob_end_clean();
+    header('Content-Type: application/gzip');
+    header('Content-Disposition: attachment; filename="' . $downloadName . '"');
+    header('Content-Length: ' . filesize($tmpFile));
+    readfile($tmpFile);
+    @unlink($tmpFile);
+    exit;
+}
+
+function importData()
+{
+    header('Content-Type: application/json');
+
+    if (!isset($_FILES['import_file']) || $_FILES['import_file']['error'] !== UPLOAD_ERR_OK) {
+        echo json_encode(['status' => 'error', 'message' => 'Upload file gagal.']);
+        exit;
+    }
+
+    $file      = $_FILES['import_file'];
+    $origName  = $file['name'];
+    $tmpUpload = $file['tmp_name'];
+
+    // Deteksi tipe berdasarkan ekstensi + mime
+    $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+    $mime = mime_content_type($tmpUpload) ?: '';
+
+    $dataDir = realpath(__DIR__ . '/data');
+    if ($dataDir === false || !is_dir($dataDir)) {
+        @mkdir(__DIR__ . '/data', 0777, true);
+        $dataDir = realpath(__DIR__ . '/data');
+        if ($dataDir === false) {
+            echo json_encode(['status' => 'error', 'message' => 'Folder /data tidak tersedia dan gagal dibuat.']);
+            exit;
+        }
+    }
+
+    try {
+        if ($ext === 'json' || strpos($mime, 'application/json') === 0 || $mime === 'text/plain') {
+            // IMPORT JSON LANGSUNG → salin ke /data, timpa jika ada
+            $target = $dataDir . DIRECTORY_SEPARATOR . basename($origName);
+            if (!move_uploaded_file($tmpUpload, $target)) {
+                // Jika move gagal (karena tmp sudah bukan upload?), coba copy stream
+                if (!copy($tmpUpload, $target)) {
+                    throw new RuntimeException('Gagal menyimpan file JSON.');
+                }
+            }
+            echo json_encode(['status' => 'success', 'message' => "Berhasil mengimpor 1 file JSON: " . basename($origName)]);
+            exit;
+        } elseif ($ext === 'zip' || $mime === 'application/zip' || $mime === 'application/x-zip-compressed') {
+            // IMPORT ZIP → extract ke temp → pindahkan *.json ke /data
+            if (!class_exists('ZipArchive')) {
+                throw new RuntimeException('File ZIP terdeteksi, namun ekstensi ZipArchive belum aktif di server.');
+            }
+            $count = extractZipJsonToData($tmpUpload, $dataDir);
+            if ($count === 0) {
+                throw new RuntimeException('Arsip ZIP tidak berisi file .json.');
+            }
+            echo json_encode(['status' => 'success', 'message' => "Berhasil mengimpor {$count} file JSON dari ZIP."]);
+            exit;
+        } elseif ($ext === 'gz' || $ext === 'tgz' || $ext === 'tar' || strpos($mime, 'application/x-gzip') === 0 || strpos($mime, 'application/gzip') === 0 || strpos($mime, 'application/x-tar') === 0) {
+            // IMPORT TAR / TAR.GZ → extract ke temp → pindahkan *.json ke /data
+            $count = extractTarJsonToData($tmpUpload, $origName, $dataDir);
+            if ($count === 0) {
+                throw new RuntimeException('Arsip TAR/TAR.GZ tidak berisi file .json.');
+            }
+            echo json_encode(['status' => 'success', 'message' => "Berhasil mengimpor {$count} file JSON dari arsip."]);
+            exit;
+        } else {
+            throw new RuntimeException('Tipe file tidak didukung. Unggah .json, .zip, atau .tar/.tar.gz');
+        }
+    } catch (Throwable $e) {
+        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        exit;
+    }
+}
+
+function extractZipJsonToData(string $zipPath, string $dataDir): int
+{
+    $tmpDir = makeTempDir('import_zip_');
+    $zip = new ZipArchive();
+    if ($zip->open($zipPath) !== true) {
+        throw new RuntimeException('Gagal membuka arsip ZIP.');
+    }
+    if (!$zip->extractTo($tmpDir)) {
+        $zip->close();
+        throw new RuntimeException('Gagal mengekstrak arsip ZIP.');
+    }
+    $zip->close();
+
+    $files = collectJsonFiles($tmpDir);
+    $count = moveJsonFiles($files, $dataDir);
+    rrmdir($tmpDir);
+    return $count;
+}
+
+function extractTarJsonToData(string $uploadPath, string $origName, string $dataDir): int
+{
+    $tmpDir = makeTempDir('import_tar_');
+
+    // Simpan upload ke file sementara dengan ekstensi aslinya agar PharData bisa kenali
+    $tmpArchive = $tmpDir . DIRECTORY_SEPARATOR . basename($origName);
+    if (!move_uploaded_file($uploadPath, $tmpArchive) && !copy($uploadPath, $tmpArchive)) {
+        rrmdir($tmpDir);
+        throw new RuntimeException('Gagal menyiapkan arsip sementara.');
+    }
+
+    $lower = strtolower($tmpArchive);
+
+    try {
+        if (str_ends_with($lower, '.tar')) {
+            // langsung extract
+            $tar = new PharData($tmpArchive);
+            $tar->extractTo($tmpDir . '/extracted', null, true);
+        } elseif (str_ends_with($lower, '.tar.gz') || str_ends_with($lower, '.tgz') || preg_match('/\.t(ar\.)?gz$/', $lower)) {
+            // decompress -> dapat .tar -> extract
+            $p = new PharData($tmpArchive);
+            $p->decompress(); // hasilkan .tar di lokasi yang sama
+            unset($p);
+
+            $tarPath = preg_replace('/\.gz$/i', '', $tmpArchive); // remove trailing .gz
+            $tar = new PharData($tarPath);
+            $tar->extractTo($tmpDir . '/extracted', null, true);
+
+            @unlink($tarPath); // bersihkan .tar hasil decompress
+        } else {
+            // fallback: coba langsung dengan PharData (beberapa build bisa buka .tar.gz langsung)
+            $p = new PharData($tmpArchive);
+            // jika tidak throw, coba extract
+            $p->extractTo($tmpDir . '/extracted', null, true);
+            unset($p);
+        }
+    } catch (Exception $e) {
+        rrmdir($tmpDir);
+        throw new RuntimeException('Gagal mengekstrak arsip TAR/TAR.GZ: ' . $e->getMessage());
+    }
+
+    $files = collectJsonFiles($tmpDir . '/extracted');
+    $count = moveJsonFiles($files, $dataDir);
+    rrmdir($tmpDir);
+    return $count;
+}
+
+function makeTempDir(string $prefix = 'import_'): string
+{
+    $base = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $prefix . bin2hex(random_bytes(6));
+    if (!mkdir($base, 0777, true)) {
+        throw new RuntimeException('Gagal membuat direktori sementara.');
+    }
+    return $base;
+}
+
+function collectJsonFiles(string $root): array
+{
+    $result = [];
+    if (!is_dir($root)) return $result;
+
+    $it = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::LEAVES_ONLY
+    );
+
+    foreach ($it as $fileInfo) {
+        if ($fileInfo->isFile()) {
+            $name = $fileInfo->getFilename();
+            if (strtolower(pathinfo($name, PATHINFO_EXTENSION)) === 'json') {
+                $result[] = $fileInfo->getPathname();
+            }
+        }
+    }
+    return $result;
+}
+
+function moveJsonFiles(array $files, string $dataDir): int
+{
+    $count = 0;
+    foreach ($files as $src) {
+        $dest = $dataDir . DIRECTORY_SEPARATOR . basename($src);
+        // pakai copy agar robust di semua FS; overwrite
+        if (!@copy($src, $dest)) {
+            // kalau copy gagal, coba baca-tulis stream
+            $in = @fopen($src, 'rb');
+            $out = @fopen($dest, 'wb');
+            if ($in && $out) {
+                stream_copy_to_stream($in, $out);
+                fclose($in);
+                fclose($out);
+                $count++;
+            } else {
+                if ($in) fclose($in);
+                if ($out) fclose($out);
+                // skip file ini
+            }
+        } else {
+            $count++;
+        }
+    }
+    return $count;
+}
+
+function rrmdir(string $dir): void
+{
+    if (!is_dir($dir)) return;
+    $it = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::CHILD_FIRST
+    );
+    foreach ($it as $path) {
+        $path->isDir() ? @rmdir($path->getPathname()) : @unlink($path->getPathname());
+    }
+    @rmdir($dir);
+}
+
+if (!function_exists('str_ends_with')) {
+    function str_ends_with($haystack, $needle)
+    {
+        $len = strlen($needle);
+        if ($len === 0) return true;
+        return (substr($haystack, -$len) === $needle);
+    }
+}
+
 
 ?>
 
@@ -37,70 +318,352 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tes_printer'])) {
 
 <head>
     <meta charset="UTF-8">
-    <title>Pengaturan</title>
+    <title>Pengaturan Sistem</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="alert.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --secondary: #64748b;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --light: #f8fafc;
+            --dark: #1e293b;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #f3f4f6 100%);
+            min-height: 100vh;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
+        }
+
+        .form-input {
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 10px 12px;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: var(--secondary);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #475569;
+            transform: translateY(-1px);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+            transform: translateY(-1px);
+        }
+
+        .btn-warning {
+            background: var(--warning);
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #d97706;
+            transform: translateY(-1px);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+            transform: translateY(-1px);
+        }
+
+        .btn-info {
+            background: #8b5cf6;
+            color: white;
+        }
+
+        .btn-info:hover {
+            background: #7c3aed;
+            transform: translateY(-1px);
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title i {
+            color: var(--primary);
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.toggle-slider {
+            background-color: var(--primary);
+        }
+
+        input:checked+.toggle-slider:before {
+            transform: translateX(26px);
+        }
+
+        .modal-overlay {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            animation: modalAppear 0.3s ease-out;
+        }
+
+        @keyframes modalAppear {
+            from {
+                opacity: 0;
+                transform: scale(0.9) translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .preview-struk {
+            font-family: 'Courier New', monospace;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 280px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 24px;
+            justify-content: center;
+        }
+
+        @media (max-width: 768px) {
+            .action-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
 </head>
 
-<body class="bg-gray-100 min-h-screen flex">
+<body class="min-h-screen flex">
     <?php include "partials/sidebar.php"; ?>
+
     <main class="flex-1 p-6">
-        <h2 class="text-2xl font-bold mb-6">🛠️ Pengaturan Sistem</h2>
-
-        <?php if (!empty($saved)): ?>
-            <script>
-                document.addEventListener("DOMContentLoaded", () => {
-                    showToast('Pengaturan berhasil disimpan!', 'success', 3000);
-                });
-            </script>
-        <?php endif; ?>
-
-        <form method="post" class="bg-white p-6 rounded-lg shadow-md space-y-4 max-w-xl">
-            <div>
-                <label class="block font-medium mb-1">Nama Toko</label>
-                <input type="text" name="nama_toko" value="<?= htmlspecialchars($settings['nama_toko']) ?>" class="w-full border rounded p-2" required>
-            </div>
-            <div>
-                <label class="block font-medium mb-1">Alamat</label>
-                <textarea name="alamat" class="w-full border rounded p-2" rows="3"><?= htmlspecialchars($settings['alamat']) ?></textarea>
-            </div>
-            <div>
-                <label class="block font-medium mb-1">Nomor Telepon/WhatsApp</label>
-                <input type="text" name="telepon" value="<?= htmlspecialchars($settings['telepon']) ?>" class="w-full border rounded p-2">
-            </div>
-            <div>
-                <label class="block font-medium mb-1">Footer Struk</label>
-                <textarea name="footer" class="w-full border rounded p-2" rows="2"><?= htmlspecialchars($settings['footer'] ?? '') ?></textarea>
-            </div>
-            <div>
-                <label class="block font-medium mb-1">Nama Printer</label>
-                <input type="text" name="printer_name" value="<?= htmlspecialchars($settings['printer_name']) ?>" class="w-full border rounded p-2" placeholder="Nama printer di komputer">
-            </div>
-            <div>
-                <label class="block font-medium mb-1">Ukuran Kertas</label>
-                <select name="paper_size" class="w-full border rounded p-2">
-                    <option value="58mm" <?= $settings['paper_size'] == '58mm' ? 'selected' : '' ?>>58mm</option>
-                    <option value="80mm" <?= $settings['paper_size'] == '80mm' ? 'selected' : '' ?>>80mm</option>
-                </select>
-            </div>
-            <div class="flex items-center gap-2">
-                <input type="checkbox" name="auto_print" <?= $settings['auto_print'] ? 'checked' : '' ?>>
-                <label class="font-medium">Cetak Otomatis setelah transaksi</label>
+        <div class="max-w-4xl mx-auto">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="p-3 bg-blue-100 rounded-lg">
+                    <i class="fas fa-cogs text-blue-600 text-xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Pengaturan Sistem</h2>
+                    <p class="text-gray-600">Kelola pengaturan toko dan sistem</p>
+                </div>
             </div>
 
-            <div class="pt-4 flex gap-3">
-                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Simpan Pengaturan</button>
-                <button type="button" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600" id="btnPreviewPrinter">Preview Struk</button>
-                <button type="button" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700" id="btnCetakPrinter">Cetak ke Printer</button>
-            </div>
-        </form>
+            <?php if (!empty($saved)): ?>
+                <script>
+                    document.addEventListener("DOMContentLoaded", () => {
+                        showToast('Pengaturan berhasil disimpan!', 'success', 3000);
+                    });
+                </script>
+            <?php endif; ?>
+
+            <form method="post" class="card p-6 space-y-6">
+                <!-- Informasi Toko -->
+                <div>
+                    <div class="section-title">
+                        <i class="fas fa-store"></i>
+                        <span>Informasi Toko</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block font-medium mb-2 text-gray-700">Nama Toko</label>
+                            <input type="text" name="nama_toko"
+                                value="<?= htmlspecialchars($settings['nama_toko']) ?>"
+                                class="form-input" required>
+                        </div>
+                        <div>
+                            <label class="block font-medium mb-2 text-gray-700">Nomor Telepon/WhatsApp</label>
+                            <input type="text" name="telepon" value="<?= htmlspecialchars($settings['telepon']) ?>"
+                                class="form-input">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block font-medium mb-2 text-gray-700">Alamat</label>
+                            <textarea name="alamat" class="form-input" rows="2"><?= htmlspecialchars($settings['alamat']) ?></textarea>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block font-medium mb-2 text-gray-700">Footer Struk</label>
+                            <textarea name="footer" class="form-input" rows="2" placeholder="Pesan tambahan di bagian bawah struk"><?= htmlspecialchars($settings['footer'] ?? '') ?></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pengaturan Printer -->
+                <div>
+                    <div class="section-title">
+                        <i class="fas fa-print"></i>
+                        <span>Pengaturan Printer</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block font-medium mb-2 text-gray-700">Nama Printer</label>
+                            <input type="text" name="printer_name" value="<?= htmlspecialchars($settings['printer_name']) ?>"
+                                class="form-input" placeholder="Nama printer di komputer">
+                        </div>
+                        <div>
+                            <label class="block font-medium mb-2 text-gray-700">Ukuran Kertas</label>
+                            <select name="paper_size" class="form-input">
+                                <option value="58mm" <?= $settings['paper_size'] == '58mm' ? 'selected' : '' ?>>58mm</option>
+                                <option value="80mm" <?= $settings['paper_size'] == '80mm' ? 'selected' : '' ?>>80mm</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-3 md:col-span-2">
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="auto_print" <?= $settings['auto_print'] ? 'checked' : '' ?>>
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <label class="font-medium text-gray-700">Cetak Otomatis setelah transaksi</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tombol Aksi -->
+                <div class="action-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i>
+                        Simpan Pengaturan
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="btnPreviewPrinter">
+                        <i class="fas fa-eye"></i>
+                        Preview Struk
+                    </button>
+                    <button type="button" class="btn btn-success" id="btnCetakPrinter">
+                        <i class="fas fa-print"></i>
+                        Tes Printer
+                    </button>
+                    <button type="button" class="btn btn-info" id="btnBackupData">
+                        <i class="fas fa-download"></i>
+                        Backup Data
+                    </button>
+                    <label class="btn btn-primary cursor-pointer" style="margin: 0;">
+                        <i class="fas fa-upload"></i>
+                        Import Data
+                        <input type="file" id="importFile" accept=".json,.zip,.tar,.tar.gz" class="hidden">
+                    </label>
+                </div>
+            </form>
+        </div>
     </main>
 
     <!-- Modal Preview -->
-    <div id="modalPreview" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-        <div class="bg-white p-4 rounded shadow-lg relative">
-            <button id="closeModal" class="absolute top-2 right-2 px-2 py-1 bg-red-500 text-white rounded">Close</button>
-            <div id="previewStruk" class="font-mono mx-auto"></div>
+    <!-- Modal Preview -->
+    <div id="modalPreview" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
+        <div class="bg-white p-6 rounded-xl shadow-xl relative max-w-md w-full mx-4 modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-gray-800">Preview Struk</h3>
+                <button id="closeModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div id="previewStruk" class="preview-struk mx-auto"></div>
         </div>
     </div>
 
@@ -113,34 +676,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tes_printer'])) {
             let itemsHtml = '';
             items.forEach(item => {
                 total += item.qty * item.harga;
-                itemsHtml += `<div style="display:flex;justify-content:space-between;margin:2px 0">
-            <span style="text-align:left;">${item.nama} x${item.qty}</span>
-            <span style="text-align:right;">Rp ${item.qty * item.harga}</span>
-        </div>`;
+                itemsHtml += `<div style="display:flex;justify-content:space-between;margin:2px 0;font-size:12px">
+                    <span style="text-align:left;width:70%">${item.nama} x${item.qty}</span>
+                    <span style="text-align:right;width:30%">Rp ${(item.qty * item.harga).toLocaleString('id-ID')}</span>
+                </div>`;
             });
 
-            // Ambil footer dari settings, pakai default jika kosong
             const footerText = settings.footer && settings.footer.trim() !== '' ? settings.footer : 'Terima kasih sudah berbelanja!';
+            const now = new Date().toLocaleString('id-ID', {
+                timeZone: 'Asia/Jakarta'
+            });
 
             return `
-<div style="width:${paperWidth}px;font-family:monospace;border:1px solid #333;padding:10px;background:#fff;">
-    <h3 style="text-align:center;margin:0">${settings.nama_toko}</h3>
-    <p style="text-align:center;margin:0">${settings.alamat}</p>
-    <p style="text-align:center;margin:0">Telp/WA: ${settings.telepon}</p>
-    <hr>
+<div style="width:${paperWidth}px;font-family:monospace;border:1px dashed #ccc;padding:10px;background:#fff;font-size:12px;line-height:1.4;">
+    <h3 style="text-align:center;margin:0;font-weight:bold;font-size:14px;">${settings.nama_toko}</h3>
+    <p style="text-align:center;margin:2px 0;font-size:11px;">${settings.alamat}</p>
+    <p style="text-align:center;margin:2px 0;font-size:11px;">Telp/WA: ${settings.telepon}</p>
+    <p style="text-align:center;margin:2px 0;font-size:10px;border-bottom:1px dashed #ccc;padding-bottom:5px;">${now}</p>
     ${itemsHtml}
-    <hr>
-    <div style="display:flex;justify-content:space-between;font-weight:bold">
+    <div style="border-top:1px dashed #ccc;margin:5px 0;"></div>
+    <div style="display:flex;justify-content:space-between;font-weight:bold;margin-top:5px;">
         <span style="text-align:left;">TOTAL:</span>
-        <span style="text-align:right;">Rp ${total}</span>
+        <span style="text-align:right;">Rp ${total.toLocaleString('id-ID')}</span>
     </div>
-    <hr>
-    <p style="text-align:center;margin:0;">${footerText}</p>
+    <div style="border-top:1px dashed #ccc;margin:5px 0;"></div>
+    <p style="text-align:center;margin:5px 0;font-size:10px;">${footerText}</p>
 </div>
 `;
         }
 
-
+        // Event Listener
         document.getElementById('btnPreviewPrinter').addEventListener('click', () => {
             const items = [{
                     nama: "Rinso Box",
@@ -160,15 +725,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tes_printer'])) {
             ];
             document.getElementById('previewStruk').innerHTML = generatePreview(items);
             document.getElementById('modalPreview').classList.remove('hidden');
-            document.getElementById('modalPreview').classList.add('flex');
+            document.getElementById('modalPreview').classList.add('flex'); // Tambahkan ini
         });
 
         document.getElementById('closeModal').addEventListener('click', () => {
             document.getElementById('modalPreview').classList.add('hidden');
-            document.getElementById('modalPreview').classList.remove('flex');
+            document.getElementById('modalPreview').classList.remove('flex'); // Tambahkan ini
         });
 
-        // Cetak
         document.getElementById('btnCetakPrinter').addEventListener('click', () => {
             const formData = new FormData();
             formData.append('tes_printer', '1');
@@ -185,6 +749,71 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tes_printer'])) {
                 })
                 .catch(err => showToast('Terjadi kesalahan', 'error', 5000));
 
+        });
+
+        function ensureIframe() {
+            let iframe = document.getElementById('download_iframe');
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.id = 'download_iframe';
+                iframe.name = 'download_iframe';
+                iframe.style.display = 'none';
+                document.body.appendChild(iframe);
+            }
+            return iframe;
+        }
+
+        // Backup data
+        document.getElementById('btnBackupData').addEventListener('click', () => {
+            window.showConfirm(
+                'Yakin ingin melakukan backup data (.json) sekarang?',
+                () => {
+                    window.showToast('Menyiapkan backup…', 'success', 2000);
+
+                    const iframe = ensureIframe();
+
+                    iframe.onload = () => {
+                        const text = iframe.contentDocument?.body?.innerText?.trim() || '';
+                        if (text.length > 0) {
+                            window.showToast('Backup gagal: ' + text, 'error', 5000);
+                        } else {
+                            window.showToast('Backup berhasil, unduhan dimulai.', 'success', 3000);
+                        }
+                    };
+
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = 'setting.php?action=backup_data';
+                    form.target = 'download_iframe';
+                    document.body.appendChild(form);
+                    form.submit();
+                    form.remove();
+                },
+                () => {
+                    window.showToast('Backup dibatalkan.', 'info', 2000);
+                }
+            );
+        });
+
+
+
+        // Import data
+        document.getElementById('importFile').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const formData = new FormData();
+            formData.append('import_file', file);
+
+            fetch('setting.php?action=import_data', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    showToast(data.message, data.status === 'success' ? 'success' : 'error', 5000);
+                    e.target.value = '';
+                })
+                .catch(err => showToast('Terjadi error: ' + err.message, 'error', 5000));
         });
     </script>
 </body>
