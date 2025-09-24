@@ -67,7 +67,7 @@
         "id": 1758442443,
         "kodeProduk": "TMY291385",
         "nama": "Beras",
-        "stok": 40,
+        "stok": 41,
         "stokMin": 5,
         "satuan": "kg",
         "satuanHarga": [
@@ -99,7 +99,7 @@
         "id": 1758442445,
         "kodeProduk": "TMY291387",
         "nama": "Indomie Ayam Bawang",
-        "stok": 154,
+        "stok": 11,
         "stokMin": 20,
         "satuan": "pcs",
         "satuanHarga": [
@@ -131,7 +131,7 @@
         "id": 1758442447,
         "kodeProduk": "TMY291389",
         "nama": "Teh Botol Sosro",
-        "stok": 120,
+        "stok": 11,
         "stokMin": 15,
         "satuan": "pcs",
         "satuanHarga": [
@@ -163,7 +163,7 @@
         "id": 1758442449,
         "kodeProduk": "TMY291391",
         "nama": "Telur Ayam",
-        "stok": 485,
+        "stok": 413,
         "stokMin": 100,
         "satuan": "bijian",
         "satuanHarga": [
@@ -195,7 +195,7 @@
         "id": 1758442451,
         "kodeProduk": "TMY291393",
         "nama": "Susu Dancow Box",
-        "stok": 38,
+        "stok": 0,
         "stokMin": 5,
         "satuan": "box",
         "satuanHarga": [

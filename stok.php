@@ -148,24 +148,29 @@ if (isset($_GET['action'])) {
                 if ($item['id'] == $id) {
                     $stokSebelum = $item['stok'];
                     $perubahan = $stokBaru - $stokSebelum;
-                    $item['stok'] = $stokBaru;
 
-                    // Catat riwayat stok
-                    $riwayat = file_exists($riwayatFile) ? json_decode(file_get_contents($riwayatFile), true) : [];
+                    // Cek kalau ada perubahan stok
+                    if ($perubahan !== 0) {
+                        $item['stok'] = $stokBaru;
 
-                    $riwayat[] = [
-                        'id_barang' => $id,
-                        'kode_produk' => $item['kodeProduk'],
-                        'nama_barang' => $item['nama'],
-                        'jumlah' => abs($perubahan),
-                        'jenis' => $perubahan >= 0 ? 'penambahan' : 'pengurangan',
-                        'keterangan' => 'Update stok manual',
-                        'waktu' => date('Y-m-d H:i:s'),
-                        'stok_sebelum' => $stokSebelum,
-                        'stok_sesudah' => $item['stok']
-                    ];
+                        // Catat riwayat stok
+                        $riwayat = file_exists($riwayatFile) ? json_decode(file_get_contents($riwayatFile), true) : [];
 
-                    file_put_contents($riwayatFile, json_encode($riwayat, JSON_PRETTY_PRINT));
+                        $riwayat[] = [
+                            'id_barang' => $id,
+                            'kode_produk' => $item['kodeProduk'],
+                            'nama_barang' => $item['nama'],
+                            'jumlah' => abs($perubahan),
+                            'jenis' => $perubahan > 0 ? 'penambahan' : 'pengurangan',
+                            'keterangan' => 'Update stok manual',
+                            'waktu' => date('Y-m-d H:i:s'),
+                            'stok_sebelum' => $stokSebelum,
+                            'stok_sesudah' => $stokBaru
+                        ];
+
+                        file_put_contents($riwayatFile, json_encode($riwayat, JSON_PRETTY_PRINT));
+                    }
+
                     $found = true;
                     break;
                 }
@@ -421,8 +426,8 @@ if (isset($_GET['action'])) {
             <!-- Di dalam div dengan class flex justify-between items-center mb-6 -->
             <div class="flex space-x-2">
                 <!-- Tombol yang sudah ada -->
-                <button onclick="openExportModal()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center">
-                    <i class="fas fa-file-export mr-2"></i> Export
+                <button onclick="openPrintModal()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center">
+                    <i class="fas fa-file-export mr-2"></i> Print Stok Barang
                 </button>
 
                 <!-- Tombol Hapus Riwayat -->
@@ -606,6 +611,7 @@ if (isset($_GET['action'])) {
                     <input type="number" id="stokBaru" min="0" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
                 </div>
                 <input type="hidden" id="editBarangId">
+                <input type="hidden" id="stokLama">
             </div>
             <div class="px-6 py-4 border-t flex justify-end">
                 <button onclick="closeEditStokModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded mr-2">
@@ -690,26 +696,34 @@ if (isset($_GET['action'])) {
         </div>
     </div>
 
-    <!-- Modal Export -->
-    <div id="exportModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-lg w-80 p-5">
-            <h2 class="text-lg font-semibold mb-4">Pilih Jenis Export</h2>
+    <div id="printData" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-xl w-96 p-6 transform transition-all scale-95 opacity-0 animate-[fadeIn_0.25s_ease-out_forwards]">
+            <!-- Header -->
+            <h2 class="text-xl font-bold text-gray-800 text-center mb-5">
+                🖨️ Pilih Jenis Cetak
+            </h2>
+
+            <!-- Buttons -->
             <div class="space-y-3">
-                <button onclick="exportData('semua')"
-                    class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg">
-                    Semua Produk
+                <button onclick="printData('semua')"
+                    class="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium shadow">
+                    📄 Cetak Semua Produk
                 </button>
-                <button onclick="exportData('limit')"
-                    class="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg">
-                    Produk Habis / Hampir Habis
+
+                <button onclick="printData('habis')"
+                    class="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg font-medium shadow">
+                    🛒 Cetak Produk Habis / Hampir Habis
                 </button>
             </div>
-            <button onclick="closeExportModal()"
-                class="mt-4 w-full bg-gray-400 hover:bg-gray-500 text-white py-2 rounded-lg">
+
+            <!-- Cancel -->
+            <button onclick="closePrintModal()"
+                class="mt-5 w-full bg-gray-300 hover:bg-gray-400 text-gray-800 py-2.5 rounded-lg font-medium transition">
                 Batal
             </button>
         </div>
     </div>
+
 
     <script>
         // Variabel global untuk menyimpan data barang
@@ -923,6 +937,7 @@ if (isset($_GET['action'])) {
             document.getElementById('editBarangId').value = barangId;
             document.getElementById('editNamaBarang').textContent = namaBarang;
             document.getElementById('editKodeBarang').textContent = kodeBarang;
+            document.getElementById('stokLama').value = stokSekarang;
             document.getElementById('stokBaru').value = stokSekarang;
             openEditStokModal();
         }
@@ -1020,9 +1035,17 @@ if (isset($_GET['action'])) {
         async function updateStok() {
             const barangId = document.getElementById('editBarangId').value;
             const stokBaru = parseInt(document.getElementById('stokBaru').value);
+            const stokLama = parseInt(document.getElementById('stokLama').value); // hidden input untuk stok lama
 
             if (isNaN(stokBaru) || stokBaru < 0) {
-                alert('Masukkan jumlah stok yang valid!');
+                showToast('Masukkan jumlah stok yang valid!', 'error');
+                return;
+            }
+
+            // Cek kalau stok tidak berubah
+            if (stokBaru === stokLama) {
+                showToast('Tidak ada perubahan stok yang dilakukan.', 'info');
+                closeEditStokModal();
                 return;
             }
 
@@ -1041,15 +1064,15 @@ if (isset($_GET['action'])) {
                 const result = await response.json();
 
                 if (result.success) {
-                    alert('Stok berhasil diupdate!');
+                    showToast('Stok berhasil diperbarui!', 'success');
                     closeEditStokModal();
                     loadBarangData(); // Muat ulang data dari server
                 } else {
-                    alert('Gagal: ' + result.message);
+                    showToast('Gagal memperbarui stok: ' + (result.message || ''), 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Terjadi kesalahan saat mengupdate stok');
+                showToast('Terjadi kesalahan saat mengupdate stok: ' + error.message, 'error');
             }
         }
 
@@ -1275,88 +1298,66 @@ if (isset($_GET['action'])) {
             renderBarangTable(filteredBarang);
         }
 
-        function openExportModal() {
-            document.getElementById("exportModal").classList.remove("hidden");
+        function openPrintModal() {
+            const modal = document.getElementById("printData");
+            modal.classList.remove("hidden");
+            modal.classList.add("opacity-100", "scale-100");
         }
 
-        function closeExportModal() {
-            document.getElementById("exportModal").classList.add("hidden");
+
+        function closePrintModal() {
+            const modal = document.getElementById("printData");
+            modal.classList.add("hidden");
+            modal.classList.remove("opacity-100", "scale-100");
         }
 
-        async function exportData(mode) {
+
+        async function printData(mode) {
             try {
-                // Ambil langsung dari barang.json
                 const response = await fetch("data/barang.json");
                 const allBarang = await response.json();
 
                 let dataExport;
                 if (mode === "semua") {
-                    dataExport = allBarang; // semua
+                    dataExport = allBarang;
                 } else {
-                    dataExport = allBarang.filter(b => b.stok <= (b.stokMin || 0)); // stok limit
+                    dataExport = allBarang.filter(b => {
+                        const stok = parseInt(b.stok) || 0;
+                        const stokMin = parseInt(b.stokMin) || 0;
+                        return stok <= stokMin;
+                    });
                 }
 
                 if (!dataExport.length) {
-                    alert("Tidak ada data yang bisa dicetak.");
+                    showToast("Tidak ada data yang bisa dicetak", "warning");
                     return;
                 }
 
-                let content = `
-                        <html>
-                        <head>
-                            <style>
-                                @page { size: 58mm auto; margin: 0; }
-                                body { font-family: monospace; font-size: 11px; margin: 0; padding: 0; }
-                                .struk { width: 58mm; padding: 5px; }
-                                h3 { text-align: center; margin: 5px 0; }
-                                table { width: 100%; border-collapse: collapse; }
-                                td { padding: 2px 0; vertical-align: top; }
-                                .line { border-top: 1px dashed #000; margin: 4px 0; }
-                            </style>
-                        </head>
-                        <body onload="window.print(); window.close();">
-                            <div class="struk">
-                                <h3>Data Stok Barang</h3>
-                                <div class="line"></div>
-                                <table>
-                                    <tr>
-                                        <td><b>Nama</b></td>
-                                        <td style="text-align:right"><b>Stok</b></td>
-                                    </tr>`;
-
-                dataExport.forEach(item => {
-                    content += `
-                                    <tr>
-                                        <td>${item.nama}</td>
-                                        <td style="text-align:right">${item.stok}</td>
-                                    </tr>`;
+                // Kirim ke PHP
+                const res = await fetch("struk_stok_barang.php", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        mode
+                    })
                 });
 
-                content += `
-                                </table>
-                                <div class="line"></div>
-                                <p style="text-align:center">Dicetak: ${new Date().toLocaleString()}</p>
-                            </div>
-                        </body>
-                        </html>`;
+                const result = await res.json();
 
-
-
-                // Buka jendela print thermal
-                const printWindow = window.open("", "_blank");
-                printWindow.document.open();
-                printWindow.document.write(content);
-                printWindow.document.close();
-
-                closeExportModal(); // tutup modal setelah export
+                if (result.status === "success") {
+                    showToast(result.message, "success");
+                    closePrintModal()
+                } else {
+                    showToast("Gagal cetak: " + result.message, "error");
+                }
 
             } catch (error) {
-                console.error("Export error:", error);
-                alert("Gagal export data");
+                console.error("Print error:", error);
+                showToast("Gagal print data", "error");
             }
         }
-
-
 
 
         // Inisialisasi halaman saat pertama kali dimuat

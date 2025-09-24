@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tes_printer'])) {
 <body class="bg-gray-100 min-h-screen flex">
     <?php include "partials/sidebar.php"; ?>
     <main class="flex-1 p-6">
-        <h2 class="text-2xl font-bold mb-6">Pengaturan Sistem</h2>
+        <h2 class="text-2xl font-bold mb-6">🛠️ Pengaturan Sistem</h2>
 
         <?php if (!empty($saved)): ?>
             <script>

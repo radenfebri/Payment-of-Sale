@@ -207,6 +207,7 @@
         "tanggal": "2025-09-23 13:56:16",
         "status": "belum lunas",
         "tanggal_bayar": null,
-        "jumlah_awal": 82000
+        "jumlah_awal": 82000,
+        "perubahan": null
     }
 ]

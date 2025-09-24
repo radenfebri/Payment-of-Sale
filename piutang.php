@@ -939,13 +939,15 @@ if (ob_get_level()) ob_clean();
                 alasan = alasanLainnya;
             }
 
+            // Validasi jumlah
             if (!jumlahBaru || isNaN(jumlahBaru) || parseInt(jumlahBaru) <= 0) {
-                showAlert('Error', 'Jumlah hutang harus berupa angka yang valid!');
+                showToast('Jumlah hutang harus berupa angka yang valid!', 'error');
                 return;
             }
 
+            // Validasi alasan
             if (!alasan) {
-                showAlert('Error', 'Harap pilih atau isi alasan perubahan!');
+                showToast('Harap pilih atau isi alasan perubahan!', 'warning');
                 return;
             }
 
@@ -962,7 +964,7 @@ if (ob_get_level()) ob_clean();
                     })
                 });
 
-                // Pastikan response adalah JSON
+                // Pastikan response JSON
                 const contentType = response.headers.get('content-type');
                 if (!contentType || !contentType.includes('application/json')) {
                     const text = await response.text();
@@ -972,15 +974,15 @@ if (ob_get_level()) ob_clean();
                 const result = await response.json();
 
                 if (result.success) {
-                    showAlert('Sukses', 'Jumlah hutang berhasil diubah!', 'success');
+                    showToast('Jumlah hutang berhasil diubah.', 'success');
                     tutupModalEditJumlah();
-                    muatDataHutang(); // Reload data
+                    muatDataHutang(); // refresh tabel
                 } else {
-                    showAlert('Error', 'Gagal mengubah jumlah hutang: ' + (result.message || ''));
+                    showToast('Gagal mengubah jumlah hutang: ' + (result.message || 'Tidak diketahui'), 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                showAlert('Error', 'Terjadi kesalahan: ' + error.message);
+                showToast('Terjadi masalah saat menghubungi server: ' + error.message, 'error');
             }
         }
 
