@@ -83,7 +83,7 @@
         "id": 1758442444,
         "kodeProduk": "TMY291386",
         "nama": "Indomie Goreng",
-        "stok": 179,
+        "stok": 171,
         "stokMin": 20,
         "satuan": "pcs",
         "satuanHarga": [
@@ -99,7 +99,7 @@
         "id": 1758442445,
         "kodeProduk": "TMY291387",
         "nama": "Indomie Ayam Bawang",
-        "stok": 11,
+        "stok": 7,
         "stokMin": 20,
         "satuan": "pcs",
         "satuanHarga": [
@@ -163,7 +163,7 @@
         "id": 1758442449,
         "kodeProduk": "TMY291391",
         "nama": "Telur Ayam",
-        "stok": 413,
+        "stok": 313,
         "stokMin": 100,
         "satuan": "bijian",
         "satuanHarga": [
@@ -179,7 +179,7 @@
         "id": 1758442450,
         "kodeProduk": "TMY291392",
         "nama": "Minyak Goreng 1L",
-        "stok": 75,
+        "stok": 73,
         "stokMin": 10,
         "satuan": "liter",
         "satuanHarga": [
@@ -227,7 +227,7 @@
         "id": "1758442453",
         "kodeProduk": "TMY291395",
         "nama": "Kopi Kapal Api Sachet",
-        "stok": 88,
+        "stok": 86,
         "stokMin": 20,
         "satuan": "pcs",
         "satuanHarga": [

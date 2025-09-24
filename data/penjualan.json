@@ -823,5 +823,115 @@
         "waktu": "2025-09-23 14:12:40",
         "totalLaba": 500,
         "recorded_in_keuangan": true
+    },
+    {
+        "items": [
+            {
+                "id": "1758442453",
+                "nama": "Kopi Kapal Api Sachet",
+                "harga": 1800,
+                "jenisHarga": "grosir",
+                "qty": 1,
+                "stok": 88,
+                "hargaModal": 1500,
+                "laba": 300
+            },
+            {
+                "id": "1758442453",
+                "nama": "Kopi Kapal Api Sachet",
+                "harga": 2000,
+                "jenisHarga": "ecer",
+                "qty": 1,
+                "stok": 88,
+                "hargaModal": 1500,
+                "laba": 500
+            }
+        ],
+        "total": 3800,
+        "diskon": 0,
+        "grandTotal": 3800,
+        "bayar": 5000,
+        "kembalian": 1200,
+        "hutang": 0,
+        "nama_pembeli": "RFK",
+        "id": 1758690192,
+        "waktu": "2025-09-24 12:03:12",
+        "totalLaba": 800,
+        "recorded_in_keuangan": true
+    },
+    {
+        "items": [
+            {
+                "id": 1758442444,
+                "nama": "Indomie Goreng",
+                "harga": 2800,
+                "jenisHarga": "grosir",
+                "qty": 1,
+                "stok": 179,
+                "hargaModal": 2500,
+                "laba": 300
+            },
+            {
+                "id": 1758442450,
+                "nama": "Minyak Goreng 1L",
+                "harga": 17000,
+                "jenisHarga": "grosir",
+                "qty": 1,
+                "stok": 75,
+                "hargaModal": 15000,
+                "laba": 2000
+            },
+            {
+                "id": 1758442450,
+                "nama": "Minyak Goreng 1L",
+                "harga": 19000,
+                "jenisHarga": "ecer",
+                "qty": 1,
+                "stok": 75,
+                "hargaModal": 15000,
+                "laba": 4000
+            },
+            {
+                "id": 1758442445,
+                "nama": "Indomie Ayam Bawang",
+                "harga": 3000,
+                "jenisHarga": "ecer",
+                "qty": 1,
+                "stok": 11,
+                "hargaModal": 2500,
+                "laba": 500
+            },
+            {
+                "id": 1758442445,
+                "nama": "Indomie Ayam Bawang",
+                "harga": 2800,
+                "jenisHarga": "grosir",
+                "qty": 3,
+                "stok": 11,
+                "hargaModal": 2500,
+                "laba": 900
+            },
+            {
+                "id": 1758442444,
+                "nama": "Indomie Goreng",
+                "harga": 3000,
+                "jenisHarga": "ecer",
+                "qty": 7,
+                "stok": 179,
+                "hargaModal": 2500,
+                "laba": 3500
+            }
+        ],
+        "total": 71200,
+        "diskon": 0,
+        "grandTotal": 71200,
+        "bayar": 12000,
+        "kembalian": 0,
+        "hutang": 59200,
+        "nama_pembeli": "Paijok",
+        "id": 1758690552,
+        "waktu": "2025-09-24 12:09:12",
+        "totalLaba": 11200,
+        "recorded_in_keuangan": true
     }
 ]

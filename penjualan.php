@@ -495,7 +495,7 @@ if (isset($_GET['action'])) {
                 if (keranjang[index].qty < barang.stok) {
                     keranjang[index].qty += 1;
                 } else {
-                    alert('Stok tidak mencukupi!');
+                    window.showToast('Stok tidak mencukupi!', 'error', 4000);
                     return;
                 }
             } else {
@@ -509,14 +509,16 @@ if (isset($_GET['action'])) {
                         stok: barang.stok
                     });
                 } else {
-                    alert('Stok habis!');
+                    window.showToast('Stok habis!', 'error', 4000);
                     return;
                 }
             }
 
             perbaruiKeranjang();
             simpanKeranjangKePenyimpanan();
+            window.showToast(`${barang.nama} berhasil ditambahkan ke keranjang.`, 'success', 3000);
         }
+
 
         // Memperbarui tampilan keranjang
         function perbaruiKeranjang() {

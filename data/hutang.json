@@ -209,5 +209,15 @@
         "tanggal_bayar": null,
         "jumlah_awal": 82000,
         "perubahan": null
+    },
+    {
+        "id": "H1758690552",
+        "id_penjualan": 1758690552,
+        "nama": "Paijok",
+        "jumlah": 59200,
+        "tanggal": "2025-09-24 12:09:12",
+        "status": "belum lunas",
+        "tanggal_bayar": null,
+        "jumlah_awal": 59200
     }
 ]

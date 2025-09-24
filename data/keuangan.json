@@ -180,5 +180,19 @@
         "jumlah": 500,
         "keterangan": "Penjualan: Jungkok",
         "tanggal": "2025-09-23 14:12:40"
+    },
+    {
+        "id": "68d37bda24a06",
+        "jenis": "pemasukan",
+        "jumlah": 800,
+        "keterangan": "Penjualan: RFK",
+        "tanggal": "2025-09-24 12:03:12"
+    },
+    {
+        "id": "68d37d39aebc9",
+        "jenis": "pemasukan",
+        "jumlah": 11200,
+        "keterangan": "Penjualan: Paijok (Sebagian, hutang: 59200)",
+        "tanggal": "2025-09-24 12:09:12"
     }
 ]
