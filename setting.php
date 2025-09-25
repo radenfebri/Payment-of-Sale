@@ -15,9 +15,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['tes_printer'])) {
     $settings['paper_size'] = $_POST['paper_size'] ?? $settings['paper_size'];
     $settings['footer'] = $_POST['footer'] ?? $settings['footer'] ?? '';
     $settings['auto_print'] = isset($_POST['auto_print']);
-    file_put_contents($settingFile, json_encode($settings, JSON_PRETTY_PRINT));
-    $saved = true;
+    // Ambil dan validasi tipe_kode dari POST
+    $tipe_kode_post = $_POST['tipe_kode'] ?? ($settings['tipe_kode'] ?? 'barcode');
+    $tipe_kode = in_array($tipe_kode_post, ['barcode', 'qr'], true) ? $tipe_kode_post : 'barcode';
+    $settings['tipe_kode'] = $tipe_kode;
+    unset($settings['tipe_kode  ']);
+
+    $ok = @file_put_contents(
+        $settingFile,
+        json_encode($settings, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+    );
+    $saved = $ok !== false;
 }
+
+$tipe = $settings['tipe_kode'] ?? 'barcode';
 
 // Tes print via AJAX
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tes_printer'])) {
@@ -547,7 +558,8 @@ if (!function_exists('str_ends_with')) {
     <?php include "partials/sidebar.php"; ?>
 
     <main class="flex-1 p-6">
-        <div class="max-w-4xl mx-auto">
+        <!-- FULL WIDTH container -->
+        <div class="w-full max-w-none mx-auto px-2 sm:px-4">
             <div class="flex items-center gap-3 mb-6">
                 <div class="p-3 bg-blue-100 rounded-lg">
                     <i class="fas fa-cogs text-blue-600 text-xl"></i>
@@ -566,14 +578,10 @@ if (!function_exists('str_ends_with')) {
                 </script>
             <?php endif; ?>
 
-            <form method="post" class="card p-6 space-y-6">
+            <form method="post" class="card p-6 space-y-6 w-full">
                 <!-- Informasi Toko -->
                 <div>
-                    <div class="section-title">
-                        <i class="fas fa-store"></i>
-                        <span>Informasi Toko</span>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
                         <div>
                             <label class="block font-medium mb-2 text-gray-700">Nama Toko</label>
                             <input type="text" name="nama_toko"
@@ -585,11 +593,11 @@ if (!function_exists('str_ends_with')) {
                             <input type="text" name="telepon" value="<?= htmlspecialchars($settings['telepon']) ?>"
                                 class="form-input">
                         </div>
-                        <div class="md:col-span-2">
+                        <div>
                             <label class="block font-medium mb-2 text-gray-700">Alamat</label>
                             <textarea name="alamat" class="form-input" rows="2"><?= htmlspecialchars($settings['alamat']) ?></textarea>
                         </div>
-                        <div class="md:col-span-2">
+                        <div>
                             <label class="block font-medium mb-2 text-gray-700">Footer Struk</label>
                             <textarea name="footer" class="form-input" rows="2" placeholder="Pesan tambahan di bagian bawah struk"><?= htmlspecialchars($settings['footer'] ?? '') ?></textarea>
                         </div>
@@ -598,11 +606,7 @@ if (!function_exists('str_ends_with')) {
 
                 <!-- Pengaturan Printer -->
                 <div>
-                    <div class="section-title">
-                        <i class="fas fa-print"></i>
-                        <span>Pengaturan Printer</span>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
                         <div>
                             <label class="block font-medium mb-2 text-gray-700">Nama Printer</label>
                             <input type="text" name="printer_name" value="<?= htmlspecialchars($settings['printer_name']) ?>"
@@ -615,45 +619,72 @@ if (!function_exists('str_ends_with')) {
                                 <option value="80mm" <?= $settings['paper_size'] == '80mm' ? 'selected' : '' ?>>80mm</option>
                             </select>
                         </div>
-                        <div class="flex items-center gap-3 md:col-span-2">
+
+                        <!-- Baris: Cetak Otomatis (kolom kiri penuh) -->
+                        <div class="flex items-center gap-3">
                             <label class="toggle-switch">
                                 <input type="checkbox" name="auto_print" <?= $settings['auto_print'] ? 'checked' : '' ?>>
                                 <span class="toggle-slider"></span>
                             </label>
                             <label class="font-medium text-gray-700">Cetak Otomatis setelah transaksi</label>
                         </div>
+
+                        <!-- Baris: Tipe Kode Label (kolom kanan sejajar seperti field atas) -->
+                        <div>
+                            <label class="block font-medium mb-2 text-gray-700">Tipe Kode Label</label>
+                            <div class="flex items-center gap-6">
+                                <label class="inline-flex items-center gap-2">
+                                    <input type="radio" name="tipe_kode" value="barcode" class="accent-blue-600"
+                                        <?= ($tipe === 'barcode') ? 'checked' : '' ?>>
+                                    <span>Barcode Panjang</span>
+                                </label>
+                                <label class="inline-flex items-center gap-2">
+                                    <input type="radio" name="tipe_kode" value="qr" class="accent-blue-600"
+                                        <?= ($tipe === 'qr') ? 'checked' : '' ?>>
+                                    <span>QR Kotak</span>
+                                </label>
+                            </div>
+                        </div>
+
+
                     </div>
                 </div>
 
+
                 <!-- Tombol Aksi -->
-                <div class="action-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save"></i>
-                        Simpan Pengaturan
-                    </button>
-                    <button type="button" class="btn btn-secondary" id="btnPreviewPrinter">
-                        <i class="fas fa-eye"></i>
-                        Preview Struk
-                    </button>
-                    <button type="button" class="btn btn-success" id="btnCetakPrinter">
-                        <i class="fas fa-print"></i>
-                        Tes Printer
-                    </button>
-                    <button type="button" class="btn btn-info" id="btnBackupData">
-                        <i class="fas fa-download"></i>
-                        Backup Data
-                    </button>
-                    <label class="btn btn-primary cursor-pointer" style="margin: 0;">
-                        <i class="fas fa-upload"></i>
-                        Import Data
-                        <input type="file" id="importFile" accept=".json,.zip,.tar,.tar.gz" class="hidden">
-                    </label>
+                <div class="action-buttons w-full flex flex-wrap gap-2 justify-between">
+                    <div class="flex flex-wrap gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i>
+                            Simpan Pengaturan
+                        </button>
+                        <button type="button" class="btn btn-secondary" id="btnPreviewPrinter">
+                            <i class="fas fa-eye"></i>
+                            Preview Struk
+                        </button>
+                        <button type="button" class="btn btn-success" id="btnCetakPrinter">
+                            <i class="fas fa-print"></i>
+                            Tes Printer
+                        </button>
+
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-info" id="btnBackupData">
+                            <i class="fas fa-download"></i>
+                            Backup Data
+                        </button>
+                        <label class="btn btn-primary cursor-pointer" style="margin:0;">
+                            <i class="fas fa-upload"></i>
+                            Import Data
+                            <input type="file" id="importFile" accept=".json,.zip,.tar,.tar.gz" class="hidden">
+                        </label>
+                    </div>
                 </div>
             </form>
         </div>
     </main>
 
-    <!-- Modal Preview -->
+
     <!-- Modal Preview -->
     <div id="modalPreview" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal-overlay">
         <div class="bg-white p-6 rounded-xl shadow-xl relative max-w-md w-full mx-4 modal-content">
