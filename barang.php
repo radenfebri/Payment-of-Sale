@@ -5,6 +5,15 @@ header("Pragma: no-cache");
 
 $barangFile = __DIR__ . "/data/barang.json";
 $satuanFile = __DIR__ . "/data/satuan.json";
+function loadJson(string $path, $default = [])
+{
+  if (!file_exists($path)) return $default;
+  $raw = file_get_contents($path);
+  $data = json_decode($raw, true);
+  return is_array($data) ? $data : $default;
+}
+
+$setting = loadJson(__DIR__ . "/data/setting.json", []);
 
 // Pastikan direktori data ada
 if (!file_exists(__DIR__ . "/data")) {
@@ -205,7 +214,7 @@ if (isset($_GET['action'])) {
                 <th class="p-3 border-b font-semibold bg-gray-100">Harga Modal</th>
                 <th class="p-3 border-b font-semibold bg-gray-100">Harga Ecer</th>
                 <th class="p-3 border-b font-semibold bg-gray-100">Harga Jual Ulang</th>
-                <th class="p-3 border-b font-semibold bg-gray-100">Aksi</th>
+                <th class="p-3 border-b font-semibold bg-gray-100 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody id="tabelBarang" class="divide-y divide-gray-200"></tbody>
@@ -322,6 +331,10 @@ if (isset($_GET['action'])) {
     // Variabel global untuk menyimpan data barang
     let allBarang = [];
     let filteredBarang = [];
+    // Gunakan json_encode agar selalu string JS yang valid
+    window.APP = {
+      TIPE_KODE: <?php echo json_encode($setting['tipe_kode'] ?? 'barcode'); ?>
+    };
 
     // Fungsi untuk membuka modal
     function bukaModal() {
@@ -442,6 +455,21 @@ if (isset($_GET['action'])) {
         // Cek apakah stok sudah mencapai atau kurang dari stok minimal
         const isStokMinimum = b.stokMin > 0 && b.stok <= b.stokMin;
 
+        let cetakBtn = "";
+        if (window.APP.TIPE_KODE === "barcode") {
+          cetakBtn = `
+        <button onclick="printAsBarcode(${b.id}, 114, 6)"
+          class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-400 text-sm flex items-center justify-center">
+          <i class="fas fa-barcode mr-1"></i> Barcode
+        </button>`;
+        } else {
+          cetakBtn = `
+        <button onclick="printAsQr(${b.id}, 72, 6)"
+          class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-400 text-sm flex items-center justify-center">
+          <i class="fas fa-qrcode mr-1"></i> QR Code
+        </button>`;
+        }
+
         tbody.innerHTML += `
       <tr class="border-b hover-row ${isStokMinimum ? 'bg-yellow-100' : ''}">
         <td class="p-3 border">${b.kodeProduk || '-'}</td>
@@ -456,7 +484,8 @@ if (isset($_GET['action'])) {
             <button onclick="editBarang(${b.id})" class="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-400 text-sm flex items-center justify-center">
               <i class="fas fa-edit mr-1"></i> Edit
             </button>
-            <button onclick='hapusBarang(${b.id})' class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-500 text-sm flex items-center justify-center">
+            ${cetakBtn}
+            <button onclick="hapusBarang(${b.id})" class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-500 text-sm flex items-center justify-center">
               <i class="fas fa-trash mr-1"></i> Hapus
             </button>
           </div>
@@ -784,6 +813,24 @@ if (isset($_GET['action'])) {
         }
       });
     });
+
+    function generateQrCode(id) {
+      window.open(`print_label.php?id=${encodeURIComponent(id)}`, '_blank');
+    }
+
+    function printAsQr(id, labels, cols) {
+      window.open(
+        `print_label.php?id=${encodeURIComponent(id)}&tipe_kode=qr&labels=${labels}&cols=${cols}`,
+        '_blank'
+      );
+    }
+
+    function printAsBarcode(id, labels, cols) {
+      window.open(
+        `print_label.php?id=${encodeURIComponent(id)}&tipe_kode=barcode&labels=${labels}&cols=${cols}`,
+        '_blank'
+      );
+    }
   </script>
 
 </body>

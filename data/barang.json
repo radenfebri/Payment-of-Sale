@@ -80,7 +80,7 @@
         ]
     },
     {
-        "id": 1758442444,
+        "id": "1758442444",
         "kodeProduk": "TMY291386",
         "nama": "Indomie Goreng",
         "stok": 171,
@@ -112,10 +112,10 @@
         ]
     },
     {
-        "id": 1758442446,
+        "id": "1758442446",
         "kodeProduk": "TMY291388",
         "nama": "Aqua Botol 600ml",
-        "stok": 420,
+        "stok": 41,
         "stokMin": 50,
         "satuan": "pcs",
         "satuanHarga": [
