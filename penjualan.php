@@ -74,95 +74,129 @@ if (isset($_GET['action'])) {
             exit;
 
         case 'simpan_penjualan':
-            $input['id'] = time();
+            $input['id']    = time();
             $input['waktu'] = date('Y-m-d H:i:s');
 
-            $totalLaba = 0;
+            $totalLaba  = 0;
             $totalHarga = 0;
 
-            // Gabungkan item duplikat berdasarkan id + jenisHarga
+            // 1) Merge baris duplikat berdasarkan id + jenisHarga
             $mergedItems = [];
             foreach ($input['items'] as $item) {
                 $key = $item['id'] . '_' . $item['jenisHarga'];
                 if (isset($mergedItems[$key])) {
-                    $mergedItems[$key]['qty'] += $item['qty'];
+                    $mergedItems[$key]['qty'] += (int)$item['qty'];
                 } else {
                     $mergedItems[$key] = $item;
+                    $mergedItems[$key]['qty'] = (int)$mergedItems[$key]['qty'];
                 }
             }
 
-            $input['items'] = []; // reset items, akan diisi hasil merge & hitung laba
+            // 2) Hitung qty gabungan per ID (tanpa peduli jenisHarga) → untuk validasi & pengurangan stok
+            $qtyById = [];
+            foreach ($mergedItems as $it) {
+                $pid = (int)$it['id'];
+                $qtyById[$pid] = ($qtyById[$pid] ?? 0) + (int)$it['qty'];
+            }
 
+            // 3) VALIDASI STOK: tolak bila permintaan melebihi stok saat ini
+            foreach ($qtyById as $pid => $qtyReq) {
+                $found = null;
+                foreach ($barang as $b) {
+                    if ((int)$b['id'] === $pid) {
+                        $found = $b;
+                        break;
+                    }
+                }
+                if (!$found) {
+                    http_response_code(400);
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'error' => "Barang dengan ID {$pid} tidak ditemukan"]);
+                    exit;
+                }
+                $stokNow = (int)($found['stok'] ?? 0);
+                if ($qtyReq > $stokNow) {
+                    http_response_code(400);
+                    header('Content-Type: application/json');
+                    echo json_encode([
+                        'success' => false,
+                        'error'   => "Stok tidak cukup untuk {$found['nama']} (stok {$stokNow}, diminta {$qtyReq})"
+                    ]);
+                    exit;
+                }
+            }
+
+            // 4) Hitung harga/laba per baris (ecer/grosir) & bentuk ulang $input['items']
+            $input['items'] = [];
             foreach ($mergedItems as $item) {
                 foreach ($barang as $b) {
-                    if ($b['id'] == $item['id']) {
-                        $modalDasar = $b['satuanHarga'][0]['hargaModal'] ?? 0;
+                    if ((int)$b['id'] === (int)$item['id']) {
+                        $modalDasar = (int)($b['satuanHarga'][0]['hargaModal']  ?? 0);
+                        $hargaEcer  = (int)($b['satuanHarga'][0]['hargaEcer']   ?? 0);
+                        $hargaGrosir = (int)($b['satuanHarga'][0]['hargaGrosir'] ?? 0);
 
                         // Tentukan harga sesuai jenis
-                        if ($item['jenisHarga'] === 'ecer') {
-                            $item['harga'] = $b['satuanHarga'][0]['hargaEcer'] ?? 0;
-                        } else {
-                            $item['harga'] = $b['satuanHarga'][0]['hargaGrosir'] ?? 0;
-                        }
+                        $item['harga'] = ($item['jenisHarga'] === 'grosir') ? $hargaGrosir : $hargaEcer;
 
                         $item['hargaModal'] = $modalDasar;
-                        $item['laba'] = ($item['harga'] - $modalDasar) * $item['qty'];
+                        $item['laba']       = ($item['harga'] - $modalDasar) * (int)$item['qty'];
 
-                        $totalLaba += $item['laba'];
-                        $totalHarga += $item['harga'] * $item['qty'];
+                        $totalLaba  += $item['laba'];
+                        $totalHarga += $item['harga'] * (int)$item['qty'];
 
-                        // Simpan item ke input
                         $input['items'][] = $item;
                         break;
                     }
                 }
             }
 
-            // Hitung grand total berdasarkan diskon
-            $diskon = $input['diskon'] ?? 0;
+            // 5) Totalkan & diskon
+            $diskon     = (int)($input['diskon'] ?? 0);
             $grandTotal = max(0, $totalHarga - $diskon);
 
-            $input['total'] = $totalHarga;
+            $input['total']      = $totalHarga;
             $input['grandTotal'] = $grandTotal;
-            $input['totalLaba'] = $totalLaba;
+            $input['totalLaba']  = $totalLaba;
 
+            // 6) Simpan transaksi
             $penjualan[] = $input;
 
-            // Update stok barang dengan cek stok
-            foreach ($input['items'] as $item) {
-                foreach ($barang as &$b) {
-                    if ($b['id'] == $item['id']) {
-                        $b['stok'] = max(0, $b['stok'] - $item['qty']);
-                        break;
-                    }
+            // 7) KURANGI STOK SEKALI PER PRODUK (pakai qty gabungan)
+            foreach ($barang as &$b) {
+                $pid = (int)$b['id'];
+                if (isset($qtyById[$pid])) {
+                    $b['stok'] = max(0, (int)$b['stok'] - (int)$qtyById[$pid]);
                 }
             }
+            unset($b);
 
-            // Simpan hutang jika ada
-            if (($input['hutang'] ?? 0) > 0) {
+            // 8) Catat hutang jika ada
+            if ((int)($input['hutang'] ?? 0) > 0) {
                 $hutang[] = [
-                    'id' => 'H' . time(),
-                    'id_penjualan' => $input['id'],
-                    'nama' => $input['nama_pembeli'] ?? 'Pelanggan',
-                    'jumlah' => $input['hutang'],
-                    'tanggal' => date('Y-m-d H:i:s'),
-                    'status' => 'belum lunas',
+                    'id'            => 'H' . time(),
+                    'id_penjualan'  => $input['id'],
+                    'nama'          => $input['nama_pembeli'] ?? 'Pelanggan',
+                    'jumlah'        => (int)$input['hutang'],
+                    'tanggal'       => date('Y-m-d H:i:s'),
+                    'status'        => 'belum lunas',
                     'tanggal_bayar' => null
                 ];
             }
 
+            // 9) Tulis ke file
             file_put_contents($penjualanFile, json_encode($penjualan, JSON_PRETTY_PRINT));
-            file_put_contents($barangFile, json_encode($barang, JSON_PRETTY_PRINT));
-            file_put_contents($hutangFile, json_encode($hutang, JSON_PRETTY_PRINT));
+            file_put_contents($barangFile,    json_encode($barang,    JSON_PRETTY_PRINT));
+            file_put_contents($hutangFile,    json_encode($hutang,    JSON_PRETTY_PRINT));
 
+            // 10) Respon OK
             header('Content-Type: application/json');
             echo json_encode([
-                "success" => true,
-                "id" => $input['id'],
-                "hutang" => ($input['hutang'] ?? 0) > 0,
-                "total" => $totalHarga,
+                "success"    => true,
+                "id"         => $input['id'],
+                "hutang"     => ((int)($input['hutang'] ?? 0) > 0),
+                "total"      => $totalHarga,
                 "grandTotal" => $grandTotal,
-                "laba" => $totalLaba
+                "laba"       => $totalLaba
             ]);
             exit;
 
@@ -661,22 +695,74 @@ if (isset($_GET['action'])) {
             container.innerHTML = html;
         }
 
-        // Menambah barang ke keranjang dengan jenis harga tertentu
+        function qtyInCartById(id, exceptIndex = -1) {
+            return keranjang.reduce((sum, it, i) => {
+                return sum + ((it.id === id && i !== exceptIndex) ? it.qty : 0);
+            }, 0);
+        }
+
+
+        function tambahKeKeranjang(barang, jenisHarga) {
+            const hargaEcer = Number(barang?.satuanHarga?.[0]?.hargaEcer || 0);
+            const hargaGrosir = Number(barang?.satuanHarga?.[0]?.hargaGrosir || 0);
+
+            const jenis = jenisHarga || 'ecer';
+            const harga = (jenis === 'grosir') ? hargaGrosir : hargaEcer;
+
+            const idx = keranjang.findIndex(i => i.id === barang.id && i.jenisHarga === jenis);
+
+            // total qty produk ini (semua jenis) yang SUDAH ada di keranjang
+            const totalAlready = qtyInCartById(barang.id);
+
+            // stok habis / penuh?
+            if (totalAlready >= barang.stok) {
+                window.showToast('Stok tidak mencukupi!', 'error', 4000);
+                return;
+            }
+
+            if (idx !== -1) {
+                // mau menambah 1 pada baris yang sama jenisnya
+                if (totalAlready + 1 > barang.stok) {
+                    window.showToast('Stok tidak mencukupi!', 'error', 4000);
+                    return;
+                }
+                keranjang[idx].qty += 1;
+            } else {
+                // menambah baris baru (jenis berbeda)
+                if (totalAlready + 1 > barang.stok) {
+                    window.showToast('Stok tidak mencukupi!', 'error', 4000);
+                    return;
+                }
+                keranjang.unshift({
+                    id: barang.id,
+                    nama: barang.nama,
+                    hargaEcer,
+                    hargaGrosir,
+                    harga,
+                    jenisHarga: jenis,
+                    qty: 1,
+                    stok: barang.stok
+                });
+            }
+
+            perbaruiKeranjang();
+            simpanKeranjangKePenyimpanan();
+            window.showToast(`${barang.nama} berhasil ditambahkan ke keranjang.`, 'success', 3000);
+        }
+
+
         // function tambahKeKeranjang(barang, jenisHarga) {
-        //     let harga = 0;
-        //     if (barang.satuanHarga && barang.satuanHarga.length > 0) {
-        //         if (jenisHarga === 'ecer') {
-        //             harga = barang.satuanHarga[0].hargaEcer;
-        //         } else if (jenisHarga === 'grosir') {
-        //             harga = barang.satuanHarga[0].hargaGrosir;
-        //         }
-        //     }
+        //     const hargaEcer = Number(barang?.satuanHarga?.[0]?.hargaEcer || 0);
+        //     const hargaGrosir = Number(barang?.satuanHarga?.[0]?.hargaGrosir || 0);
 
-        //     const index = keranjang.findIndex(item => item.id === barang.id && item.jenisHarga === jenisHarga);
+        //     const jenis = jenisHarga || 'ecer'; // default ecer
+        //     const harga = (jenis === 'grosir') ? hargaGrosir : hargaEcer;
 
-        //     if (index !== -1) {
-        //         if (keranjang[index].qty < barang.stok) {
-        //             keranjang[index].qty += 1;
+        //     const idx = keranjang.findIndex(i => i.id === barang.id && i.jenisHarga === jenis);
+
+        //     if (idx !== -1) {
+        //         if (keranjang[idx].qty < barang.stok) {
+        //             keranjang[idx].qty += 1;
         //         } else {
         //             window.showToast('Stok tidak mencukupi!', 'error', 4000);
         //             return;
@@ -686,8 +772,10 @@ if (isset($_GET['action'])) {
         //             keranjang.unshift({
         //                 id: barang.id,
         //                 nama: barang.nama,
-        //                 harga: harga,
-        //                 jenisHarga: jenisHarga,
+        //                 hargaEcer,
+        //                 hargaGrosir,
+        //                 harga, // harga aktif
+        //                 jenisHarga: jenis, // 'ecer' | 'grosir'
         //                 qty: 1,
         //                 stok: barang.stok
         //             });
@@ -702,72 +790,33 @@ if (isset($_GET['action'])) {
         //     window.showToast(`${barang.nama} berhasil ditambahkan ke keranjang.`, 'success', 3000);
         // }
 
-        function tambahKeKeranjang(barang, jenisHarga) {
-            const hargaEcer = Number(barang?.satuanHarga?.[0]?.hargaEcer || 0);
-            const hargaGrosir = Number(barang?.satuanHarga?.[0]?.hargaGrosir || 0);
-
-            const jenis = jenisHarga || 'ecer'; // default ecer
-            const harga = (jenis === 'grosir') ? hargaGrosir : hargaEcer;
-
-            const idx = keranjang.findIndex(i => i.id === barang.id && i.jenisHarga === jenis);
-
-            if (idx !== -1) {
-                if (keranjang[idx].qty < barang.stok) {
-                    keranjang[idx].qty += 1;
-                } else {
-                    window.showToast('Stok tidak mencukupi!', 'error', 4000);
-                    return;
-                }
-            } else {
-                if (barang.stok > 0) {
-                    keranjang.unshift({
-                        id: barang.id,
-                        nama: barang.nama,
-                        hargaEcer,
-                        hargaGrosir,
-                        harga, // harga aktif
-                        jenisHarga: jenis, // 'ecer' | 'grosir'
-                        qty: 1,
-                        stok: barang.stok
-                    });
-                } else {
-                    window.showToast('Stok habis!', 'error', 4000);
-                    return;
-                }
-            }
-
-            perbaruiKeranjang();
-            simpanKeranjangKePenyimpanan();
-            window.showToast(`${barang.nama} berhasil ditambahkan ke keranjang.`, 'success', 3000);
-        }
-
 
         function ubahJenis(index, jenis) {
             const item = keranjang[index];
-
-            // fallback untuk data lama di localStorage
             if (item.hargaEcer == null) item.hargaEcer = Number(item.harga || 0);
             if (item.hargaGrosir == null) item.hargaGrosir = Number(item.harga || 0);
 
-            // set jenis & harga aktif
             item.jenisHarga = jenis;
-            item.harga = (jenis === 'grosir') ?
-                Number(item.hargaGrosir || 0) :
-                Number(item.hargaEcer || 0);
+            item.harga = (jenis === 'grosir') ? Number(item.hargaGrosir || 0) : Number(item.hargaEcer || 0);
 
-            // merge bila sudah ada baris dengan id & jenis sama
-            const dupIndex = keranjang.findIndex((it, i) =>
-                i !== index && it.id === item.id && it.jenisHarga === jenis
-            );
+            // Pastikan qty baris ini + qty baris lain tidak melebihi stok
+            const otherQty = qtyInCartById(item.id, index);
+            if (otherQty + item.qty > item.stok) {
+                item.qty = Math.max(1, item.stok - otherQty);
+            }
+
+            // merge bila sudah ada baris dengan jenis yg sama
+            const dupIndex = keranjang.findIndex((it, i) => i !== index && it.id === item.id && it.jenisHarga === jenis);
             if (dupIndex !== -1) {
-                const totalQty = keranjang[dupIndex].qty + item.qty;
-                keranjang[dupIndex].qty = Math.min(totalQty, item.stok);
+                const combined = keranjang[dupIndex].qty + item.qty;
+                keranjang[dupIndex].qty = Math.min(combined, item.stok);
                 keranjang.splice(index, 1);
             }
 
             perbaruiKeranjang();
             simpanKeranjangKePenyimpanan();
         }
+
 
 
         function setJenisSelectColor(sel) {
@@ -869,20 +918,25 @@ if (isset($_GET['action'])) {
         }
 
         // Mengubah kuantitas item
-        function ubahQty(index, delta) {
-            const newQty = keranjang[index].qty + delta;
+        function ubahQtyManual(index, value) {
+            const item = keranjang[index];
+            const stok = item.stok;
+            const otherQty = qtyInCartById(item.id, index);
+            let newQty = parseInt(value);
 
-            if (newQty < 1) {
-                hapusDariKeranjang(index);
-            } else if (newQty > keranjang[index].stok) {
-                // alert('Stok tidak mencukupi!');
-                window.showToast('Stok tidak mencukupi!', 'error', 4000);
-            } else {
-                keranjang[index].qty = newQty;
-                perbaruiKeranjang();
+            if (isNaN(newQty) || newQty < 1) newQty = 1;
+            if (otherQty + newQty > stok) {
+                const sisa = Math.max(0, stok - otherQty);
+                window.showToast(`Stok tidak mencukupi! Maksimal bisa ${sisa}`, 'error', 4000);
+                newQty = sisa; // clamp
+                if (newQty < 1) newQty = 1;
             }
+
+            item.qty = newQty;
+            perbaruiKeranjang();
             simpanKeranjangKePenyimpanan();
         }
+
 
         // Mengubah kuantitas manual
         function ubahQtyManual(index, value) {

@@ -256,7 +256,7 @@
         ]
     },
     {
-        "id": 1758865682,
+        "id": "1758865682",
         "kodeProduk": "8993319190642",
         "nama": "Tisu Magic",
         "stok": 1,
@@ -266,7 +266,7 @@
             {
                 "satuan": "pcs",
                 "hargaModal": 12000,
-                "hargaEcer": 12000,
+                "hargaEcer": 15000,
                 "hargaGrosir": 12000
             }
         ]
