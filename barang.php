@@ -247,12 +247,21 @@ if (isset($_GET['action'])) {
   <?php include "partials/sidebar.php"; ?>
 
   <main class="flex-1 p-6">
-    <div class="flex justify-between items-center mb-4">
+    <div class="flex items-center justify-between mb-4">
       <h2 class="text-2xl font-semibold">📦 Manajemen Barang</h2>
-      <button onclick="bukaModal()" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-500 transition flex items-center">
-        <i class="fas fa-plus mr-2"></i> Tambah Barang
-      </button>
+
+      <div class="flex items-center gap-2">
+        <button id="btnCetakSemua" type="button"
+          class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-500 transition flex items-center">
+          <i class="fas fa-print mr-2"></i> Cetak Semua
+        </button>
+
+        <button onclick="bukaModal()" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-500 transition flex items-center">
+          <i class="fas fa-plus mr-2"></i> Tambah Barang
+        </button>
+      </div>
     </div>
+
 
     <!-- Kembalikan ke struktur awal dengan sedikit modifikasi -->
     <div class="bg-white p-6 rounded-lg shadow-md mb-6">
@@ -423,10 +432,9 @@ if (isset($_GET['action'])) {
     window.onload = function() {
       loadSatuan();
       loadBarang();
-      loadSatuanOptions(); // Memuat opsi satuan untuk filter
-
-      // Fokus pada input pencarian saat halaman dimuat
+      loadSatuanOptions();
       document.getElementById("search").focus();
+      setupCetakSemuaButton();
     };
 
     // Memuat opsi satuan untuk dropdown filter
@@ -904,6 +912,19 @@ if (isset($_GET['action'])) {
         `print_label.php?id=${encodeURIComponent(id)}&tipe_kode=barcode&labels=${labels}&cols=${cols}`,
         '_blank'
       );
+    }
+
+    function setupCetakSemuaButton() {
+      const tipe = (window.APP?.settings?.label?.tipe_kode || window.APP?.TIPE_KODE || 'barcode').toLowerCase();
+      const btn = document.getElementById('btnCetakSemua');
+
+      const icon = (tipe === 'qr') ? 'fa-qrcode' : 'fa-barcode';
+      const label = (tipe === 'qr') ? 'Cetak Semua QR' : 'Cetak Semua Barcode';
+      btn.innerHTML = `<i class="fas ${icon} mr-2"></i> ${label}`;
+
+      btn.onclick = function() {
+        window.open(`print_all_labels.php?tipe_kode=${encodeURIComponent(tipe)}`, '_blank');
+      };
     }
   </script>
 

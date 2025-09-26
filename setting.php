@@ -710,7 +710,7 @@ if (!function_exists('str_ends_with')) {
                                         value="qr"
                                         class="accent-blue-600"
                                         <?= ($tipe === 'qr') ? 'checked' : '' ?> />
-                                    <span>QR Kotak</span>
+                                    <span>QR Code</span>
                                 </label>
                             </div>
                         </div>
