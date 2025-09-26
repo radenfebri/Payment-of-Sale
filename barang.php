@@ -848,13 +848,140 @@ if (isset($_GET['action'])) {
       }
     });
 
-    // Tangkap input dari scanner (Enter key)
-    document.getElementById("kodeProduk").addEventListener("keypress", function(e) {
-      if (e.key === "Enter") {
+
+    // ==== Auto-capture scanner (global) untuk form Tambah Barang ====
+    const SCAN_ADD = {
+      MIN_LEN: 6,
+      MAX_INTERVAL: 50,
+      END_WAIT: 120
+    }; // ms
+    let addBuf = '',
+      addTimer = null,
+      ADD_SCANNING = false;
+    let lastKeyChar = null,
+      lastKeyTime = 0;
+
+    function addResetScan() {
+      addBuf = '';
+      ADD_SCANNING = false;
+      if (addTimer) {
+        clearTimeout(addTimer);
+        addTimer = null;
+      }
+    }
+
+    function handleScannedForAdd(raw) {
+      const code = String(raw).replace(/[\r\n\t]+/g, '').trim();
+      if (!code) return;
+
+      // Buka modal kalau belum terbuka
+      const modal = document.getElementById('modalForm');
+      if (modal && modal.classList.contains('hidden')) bukaModal();
+
+      // Isi ke #kodeProduk
+      const kodeEl = document.getElementById('kodeProduk');
+      if (kodeEl) {
+        kodeEl.value = code;
+        kodeEl.focus();
+      }
+
+      // Cek duplikat
+      const exist = (window.allBarang || []).find(b =>
+        (b.kodeProduk || '').toLowerCase() === code.toLowerCase()
+      );
+      if (exist) {
+        showConfirm(
+          `Kode ${code} sudah dipakai untuk "${exist.nama ?? '-'}". Buka Edit?`,
+          () => editBarang(exist.id),
+          () => {
+            kodeEl?.focus();
+          }
+        );
+      }
+    }
+
+    function addFinishScan(raw) {
+      handleScannedForAdd(raw);
+      addResetScan();
+    }
+
+    // PENTING: pakai capturing agar bisa cegah input lebih awal
+    document.addEventListener('keydown', (e) => {
+      const el = document.activeElement;
+      const printable = (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey);
+
+      // ENTER/TAB: akhiri scan kalau sedang scanning
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        if (ADD_SCANNING || addBuf) {
+          e.preventDefault();
+          e.stopPropagation();
+          return addFinishScan(addBuf);
+        }
+        // kalau tidak scanning, biarkan default (mis. pindah fokus)
+        return;
+      }
+
+      if (!printable) return;
+
+      const now = performance.now();
+      const gap = now - (lastKeyTime || now);
+
+      // --- TRANSISI ke mode scan: karakter ke-2 (gap cepat) ---
+      if (!ADD_SCANNING && gap <= SCAN_ADD.MAX_INTERVAL) {
+        ADD_SCANNING = true;
+
+        // Mulai buffer dengan (karakter pertama + karakter sekarang)
+        addBuf = (lastKeyChar || '') + e.key;
+
+        // OPSIONAL: rollback 1 char yang sudah terlanjur ngetik ke input fokus
+        if (el && 'value' in el && typeof el.value === 'string' &&
+          el.selectionStart === el.value.length && el.selectionEnd === el.value.length &&
+          el.value.length > 0) {
+          el.value = el.value.slice(0, -1);
+        }
+
         e.preventDefault();
-        document.getElementById("nama").focus();
+        e.stopPropagation();
+        if (addTimer) clearTimeout(addTimer);
+        addTimer = setTimeout(() => {
+          (addBuf.length >= SCAN_ADD.MIN_LEN) ? addFinishScan(addBuf): addResetScan();
+        }, SCAN_ADD.END_WAIT);
+
+      } else if (ADD_SCANNING) {
+        // Sudah di mode scan → cegah input normal & buffer char
+        e.preventDefault();
+        e.stopPropagation();
+        addBuf += e.key;
+        if (addTimer) clearTimeout(addTimer);
+        addTimer = setTimeout(() => {
+          (addBuf.length >= SCAN_ADD.MIN_LEN) ? addFinishScan(addBuf): addResetScan();
+        }, SCAN_ADD.END_WAIT);
+      }
+
+      // Simpan karakter & waktu untuk deteksi next key
+      lastKeyChar = e.key;
+      lastKeyTime = now;
+    }, true);
+
+    // BONUS: kalau aplikasi scanner “paste all at once”
+    document.addEventListener('paste', (e) => {
+      const txt = e.clipboardData?.getData('text') ?? '';
+      if (txt && txt.length >= SCAN_ADD.MIN_LEN) {
+        e.preventDefault();
+        e.stopPropagation();
+        addFinishScan(txt);
+      }
+    }, true);
+
+    // Enter di #kodeProduk untuk input manual (opsional)
+    document.getElementById('kodeProduk')?.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        if (ADD_SCANNING) return; // kalau sesi scan, abaikan
+        e.preventDefault();
+        document.getElementById('stok')?.focus(); // atau biarkan tetap di kode
       }
     });
+
 
     // Navigasi form dengan tombol Enter
     const formInputs = document.querySelectorAll('#form input, #form select');
