@@ -4,7 +4,30 @@ require "struk_template.php";
 date_default_timezone_set('Asia/Jakarta'); // pastikan tanggal struk sesuai GMT+7
 
 $settingFile = __DIR__ . "/data/setting.json";
-$settings = json_decode(file_get_contents($settingFile), true);
+$saved = false; // inisialisasi agar tidak undefined
+
+$raw = @file_get_contents($settingFile);
+$settings = json_decode($raw, true);
+if (!is_array($settings)) $settings = [];
+
+$defaults = [
+    'nama_toko'    => 'Toko Saya',
+    'alamat'       => '',
+    'telepon'      => '',
+    'printer_name' => 'POS-58',
+    'paper_size'   => '58mm',
+    'auto_print'   => false,
+    'footer'       => '',
+    'tipe_kode'    => 'barcode',
+    'label'        => [
+        'tipe_kode' => 'barcode',
+        'barcode'   => ['width_px' => 114, 'per_row' => 6],
+        'qr'        => ['size_px'  =>  72, 'per_row' => 6],
+    ],
+];
+
+// merge rekursif supaya key yang hilang terisi aman
+$settings = array_replace_recursive($defaults, $settings);
 
 // Simpan pengaturan
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['tes_printer'])) {
@@ -19,6 +42,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['tes_printer'])) {
     $tipe_kode_post = $_POST['tipe_kode'] ?? ($settings['tipe_kode'] ?? 'barcode');
     $tipe_kode = in_array($tipe_kode_post, ['barcode', 'qr'], true) ? $tipe_kode_post : 'barcode';
     $settings['tipe_kode'] = $tipe_kode;
+
+    // ----- Label settings (ambil dari form; fallback ke nilai lama/default) -----
+    $barcode_width_px = isset($_POST['barcode_width_px']) ? (int)$_POST['barcode_width_px'] : $settings['label']['barcode']['width_px'];
+    $barcode_per_row  = isset($_POST['barcode_per_row'])  ? (int)$_POST['barcode_per_row']  : $settings['label']['barcode']['per_row'];
+    $qr_size_px       = isset($_POST['qr_size_px'])       ? (int)$_POST['qr_size_px']       : $settings['label']['qr']['size_px'];
+    $qr_per_row       = isset($_POST['qr_per_row'])       ? (int)$_POST['qr_per_row']       : $settings['label']['qr']['per_row'];
+
+    // validasi sederhana
+    $barcode_width_px = max(40, min($barcode_width_px, 800));
+    $barcode_per_row  = max(1, min($barcode_per_row, 12));
+    $qr_size_px       = max(40, min($qr_size_px, 800));
+    $qr_per_row       = max(1, min($qr_per_row, 12));
+
+    // set kembali ke settings
+    $settings['label']['tipe_kode'] = $tipe_kode; // sinkron
+    $settings['label']['barcode']['width_px'] = $barcode_width_px;
+    $settings['label']['barcode']['per_row']  = $barcode_per_row;
+    $settings['label']['qr']['size_px']       = $qr_size_px;
+    $settings['label']['qr']['per_row']       = $qr_per_row;
+
+    // bersihkan key typo jika ada
     unset($settings['tipe_kode  ']);
 
     $ok = @file_put_contents(
@@ -32,12 +76,12 @@ $tipe = $settings['tipe_kode'] ?? 'barcode';
 
 // Tes print via AJAX
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tes_printer'])) {
+    header('Content-Type: application/json; charset=utf-8'); // ← tambahkan
     $items = [
         ["nama" => "Rinso Box", "qty" => 2, "harga" => 50000],
         ["nama" => "Teh Botol", "qty" => 3, "harga" => 7000],
         ["nama" => "Indomie Goreng", "qty" => 5, "harga" => 3500],
     ];
-
     echo json_encode(cetakStruk($items, $settings));
     exit;
 }
@@ -584,22 +628,35 @@ if (!function_exists('str_ends_with')) {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
                         <div>
                             <label class="block font-medium mb-2 text-gray-700">Nama Toko</label>
-                            <input type="text" name="nama_toko"
-                                value="<?= htmlspecialchars($settings['nama_toko']) ?>"
-                                class="form-input" required>
+                            <input
+                                type="text"
+                                name="nama_toko"
+                                value="<?= htmlspecialchars($settings['nama_toko'], ENT_QUOTES, 'UTF-8') ?>"
+                                class="form-input"
+                                required />
                         </div>
                         <div>
                             <label class="block font-medium mb-2 text-gray-700">Nomor Telepon/WhatsApp</label>
-                            <input type="text" name="telepon" value="<?= htmlspecialchars($settings['telepon']) ?>"
-                                class="form-input">
+                            <input
+                                type="text"
+                                name="telepon"
+                                value="<?= htmlspecialchars($settings['telepon'], ENT_QUOTES, 'UTF-8') ?>"
+                                class="form-input" />
                         </div>
                         <div>
                             <label class="block font-medium mb-2 text-gray-700">Alamat</label>
-                            <textarea name="alamat" class="form-input" rows="2"><?= htmlspecialchars($settings['alamat']) ?></textarea>
+                            <textarea
+                                name="alamat"
+                                class="form-input"
+                                rows="2"><?= htmlspecialchars($settings['alamat'], ENT_QUOTES, 'UTF-8') ?></textarea>
                         </div>
                         <div>
                             <label class="block font-medium mb-2 text-gray-700">Footer Struk</label>
-                            <textarea name="footer" class="form-input" rows="2" placeholder="Pesan tambahan di bagian bawah struk"><?= htmlspecialchars($settings['footer'] ?? '') ?></textarea>
+                            <textarea
+                                name="footer"
+                                class="form-input"
+                                rows="2"
+                                placeholder="Pesan tambahan di bagian bawah struk"><?= htmlspecialchars($settings['footer'] ?? '', ENT_QUOTES, 'UTF-8') ?></textarea>
                         </div>
                     </div>
                 </div>
@@ -609,8 +666,12 @@ if (!function_exists('str_ends_with')) {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
                         <div>
                             <label class="block font-medium mb-2 text-gray-700">Nama Printer</label>
-                            <input type="text" name="printer_name" value="<?= htmlspecialchars($settings['printer_name']) ?>"
-                                class="form-input" placeholder="Nama printer di komputer">
+                            <input
+                                type="text"
+                                name="printer_name"
+                                value="<?= htmlspecialchars($settings['printer_name'], ENT_QUOTES, 'UTF-8') ?>"
+                                class="form-input"
+                                placeholder="Nama printer di komputer" />
                         </div>
                         <div>
                             <label class="block font-medium mb-2 text-gray-700">Ukuran Kertas</label>
@@ -620,33 +681,86 @@ if (!function_exists('str_ends_with')) {
                             </select>
                         </div>
 
-                        <!-- Baris: Cetak Otomatis (kolom kiri penuh) -->
+                        <!-- Toggle Auto Print -->
                         <div class="flex items-center gap-3">
                             <label class="toggle-switch">
-                                <input type="checkbox" name="auto_print" <?= $settings['auto_print'] ? 'checked' : '' ?>>
+                                <input type="checkbox" name="auto_print" <?= $settings['auto_print'] ? 'checked' : '' ?> />
                                 <span class="toggle-slider"></span>
                             </label>
                             <label class="font-medium text-gray-700">Cetak Otomatis setelah transaksi</label>
                         </div>
 
-                        <!-- Baris: Tipe Kode Label (kolom kanan sejajar seperti field atas) -->
+                        <!-- Tipe Kode Label -->
                         <div>
                             <label class="block font-medium mb-2 text-gray-700">Tipe Kode Label</label>
                             <div class="flex items-center gap-6">
                                 <label class="inline-flex items-center gap-2">
-                                    <input type="radio" name="tipe_kode" value="barcode" class="accent-blue-600"
-                                        <?= ($tipe === 'barcode') ? 'checked' : '' ?>>
+                                    <input
+                                        type="radio"
+                                        name="tipe_kode"
+                                        value="barcode"
+                                        class="accent-blue-600"
+                                        <?= ($tipe === 'barcode') ? 'checked' : '' ?> />
                                     <span>Barcode Panjang</span>
                                 </label>
                                 <label class="inline-flex items-center gap-2">
-                                    <input type="radio" name="tipe_kode" value="qr" class="accent-blue-600"
-                                        <?= ($tipe === 'qr') ? 'checked' : '' ?>>
+                                    <input
+                                        type="radio"
+                                        name="tipe_kode"
+                                        value="qr"
+                                        class="accent-blue-600"
+                                        <?= ($tipe === 'qr') ? 'checked' : '' ?> />
                                     <span>QR Kotak</span>
                                 </label>
                             </div>
                         </div>
+                    </div>
+                </div>
 
+                <!-- Pengaturan Label -->
+                <div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
+                        <!-- Barcode -->
+                        <div>
+                            <label class="block font-medium mb-2 text-gray-700">Lebar Gambar Barcode (px)</label>
+                            <input
+                                type="number"
+                                min="40"
+                                max="800"
+                                name="barcode_width_px"
+                                value="<?= (int)($settings['label']['barcode']['width_px'] ?? 114) ?>"
+                                class="form-input mb-3" />
 
+                            <label class="block font-medium mb-2 text-gray-700">Jumlah Barcode per Baris</label>
+                            <input
+                                type="number"
+                                min="1"
+                                max="12"
+                                name="barcode_per_row"
+                                value="<?= (int)($settings['label']['barcode']['per_row'] ?? 6) ?>"
+                                class="form-input" />
+                        </div>
+
+                        <!-- QR Code -->
+                        <div>
+                            <label class="block font-medium mb-2 text-gray-700">Ukuran Sisi QR (px)</label>
+                            <input
+                                type="number"
+                                min="40"
+                                max="800"
+                                name="qr_size_px"
+                                value="<?= (int)($settings['label']['qr']['size_px'] ?? 72) ?>"
+                                class="form-input mb-3" />
+
+                            <label class="block font-medium mb-2 text-gray-700">Jumlah QR per Baris</label>
+                            <input
+                                type="number"
+                                min="1"
+                                max="12"
+                                name="qr_per_row"
+                                value="<?= (int)($settings['label']['qr']['per_row'] ?? 6) ?>"
+                                class="form-input mb-3" />
+                        </div>
                     </div>
                 </div>
 
@@ -666,21 +780,22 @@ if (!function_exists('str_ends_with')) {
                             <i class="fas fa-print"></i>
                             Tes Printer
                         </button>
-
                     </div>
+
                     <div class="flex flex-wrap gap-2">
                         <button type="button" class="btn btn-info" id="btnBackupData">
                             <i class="fas fa-download"></i>
                             Backup Data
                         </button>
-                        <label class="btn btn-primary cursor-pointer" style="margin:0;">
+                        <label class="btn btn-primary cursor-pointer m-0">
                             <i class="fas fa-upload"></i>
                             Import Data
-                            <input type="file" id="importFile" accept=".json,.zip,.tar,.tar.gz" class="hidden">
+                            <input type="file" id="importFile" accept=".json,.zip,.tar,.tar.gz" class="hidden" />
                         </label>
                     </div>
                 </div>
             </form>
+
         </div>
     </main>
 

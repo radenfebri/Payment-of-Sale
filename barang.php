@@ -5,29 +5,48 @@ header("Pragma: no-cache");
 
 $barangFile = __DIR__ . "/data/barang.json";
 $satuanFile = __DIR__ . "/data/satuan.json";
-function loadJson(string $path, $default = [])
-{
-  if (!file_exists($path)) return $default;
-  $raw = file_get_contents($path);
-  $data = json_decode($raw, true);
-  return is_array($data) ? $data : $default;
-}
 
-$setting = loadJson(__DIR__ . "/data/setting.json", []);
+// --- DEFINISI loadJson (pastikan ada) ---
+if (!function_exists('loadJson')) {
+  function loadJson(string $path, $default = [])
+  {
+    if (!is_file($path)) return $default;
+    $raw = @file_get_contents($path);
+    if ($raw === false) return $default;
+    $data = json_decode($raw, true);
+    return is_array($data) ? $data : $default;
+  }
+}
 
 // Pastikan direktori data ada
-if (!file_exists(__DIR__ . "/data")) {
-  mkdir(__DIR__ . "/data", 0777, true);
+if (!is_dir(__DIR__ . "/data")) {
+  @mkdir(__DIR__ . "/data", 0777, true);
 }
 
+// Muat setting.json (boleh kosong, akan di-merge default)
+$settingPath = __DIR__ . "/data/setting.json";
+$setting = loadJson($settingPath, []);
+
+// default agar key selalu ada
+$defaults = [
+  'tipe_kode' => 'barcode',
+  'label' => [
+    'tipe_kode' => 'barcode',
+    'barcode'   => ['width_px' => 114, 'per_row' => 6],
+    'qr'        => ['size_px'  =>  72, 'per_row' => 6, 'ecc' => 'M'],
+  ],
+];
+
+$setting = array_replace_recursive($defaults, $setting);
+
 // Pastikan file JSON ada, jika tidak buat file kosong
-if (!file_exists($barangFile)) file_put_contents($barangFile, "[]");
-if (!file_exists($satuanFile)) file_put_contents($satuanFile, "[]");
+if (!is_file($barangFile))  file_put_contents($barangFile, "[]", LOCK_EX);
+if (!is_file($satuanFile))  file_put_contents($satuanFile, "[]", LOCK_EX);
 
 if (isset($_GET['action'])) {
   $barang = json_decode(file_get_contents($barangFile), true) ?? [];
   $satuan = json_decode(file_get_contents($satuanFile), true) ?? [];
-  $input = json_decode(file_get_contents("php://input"), true);
+  $input  = json_decode(file_get_contents("php://input"), true) ?? [];
 
   switch ($_GET['action']) {
     case 'list':
@@ -36,51 +55,78 @@ if (isset($_GET['action'])) {
       exit;
 
     case 'add':
+      if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        http_response_code(405);
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'error' => 'Method not allowed']);
+        exit;
+      }
       $input['id'] = time();
       $input['satuanHarga'] = $input['satuanHarga'] ?? [];
       $barang[] = $input;
-      file_put_contents($barangFile, json_encode($barang, JSON_PRETTY_PRINT));
+      file_put_contents(
+        $barangFile,
+        json_encode($barang, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        LOCK_EX
+      );
       header('Content-Type: application/json');
       echo json_encode(["success" => true, "id" => $input['id']]);
       exit;
 
     case 'edit':
+      if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        http_response_code(405);
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'error' => 'Method not allowed']);
+        exit;
+      }
       $found = false;
       foreach ($barang as &$d) {
-        if ($d['id'] == $input['id']) {
+        if ((int)$d['id'] === (int)($input['id'] ?? 0)) {
           $d = $input;
           $found = true;
           break;
         }
       }
-
+      header('Content-Type: application/json');
       if ($found) {
-        file_put_contents($barangFile, json_encode($barang, JSON_PRETTY_PRINT));
-        header('Content-Type: application/json');
+        file_put_contents(
+          $barangFile,
+          json_encode($barang, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+          LOCK_EX
+        );
         echo json_encode(["success" => true]);
       } else {
-        header('Content-Type: application/json');
         echo json_encode(["success" => false, "error" => "Barang tidak ditemukan"]);
       }
       exit;
 
     case 'delete':
+      if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        http_response_code(405);
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'error' => 'Method not allowed']);
+        exit;
+      }
+      $idHapus = (int)($input['id'] ?? 0);
       $newBarang = [];
       $deleted = false;
       foreach ($barang as $d) {
-        if ($d['id'] != $input['id']) {
+        if ((int)$d['id'] !== $idHapus) {
           $newBarang[] = $d;
         } else {
           $deleted = true;
         }
       }
-
+      header('Content-Type: application/json');
       if ($deleted) {
-        file_put_contents($barangFile, json_encode($newBarang, JSON_PRETTY_PRINT));
-        header('Content-Type: application/json');
+        file_put_contents(
+          $barangFile,
+          json_encode($newBarang, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+          LOCK_EX
+        );
         echo json_encode(["success" => true]);
       } else {
-        header('Content-Type: application/json');
         echo json_encode(["success" => false, "error" => "Barang tidak ditemukan"]);
       }
       exit;
@@ -91,8 +137,24 @@ if (isset($_GET['action'])) {
       exit;
 
     case 'satuan_add':
-      $satuan[] = ["id" => time(), "nama" => $input['nama']];
-      file_put_contents($satuanFile, json_encode($satuan, JSON_PRETTY_PRINT));
+      if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        http_response_code(405);
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'error' => 'Method not allowed']);
+        exit;
+      }
+      $namaBaru = trim((string)($input['nama'] ?? ''));
+      if ($namaBaru === '') {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'error' => 'Nama satuan wajib diisi']);
+        exit;
+      }
+      $satuan[] = ["id" => time(), "nama" => $namaBaru];
+      file_put_contents(
+        $satuanFile,
+        json_encode($satuan, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        LOCK_EX
+      );
       header('Content-Type: application/json');
       echo json_encode(["success" => true]);
       exit;
@@ -171,6 +233,12 @@ if (isset($_GET['action'])) {
       }
     }
   </style>
+  <script>
+    window.APP = <?= json_encode([
+                    'TIPE_KODE' => strtolower($setting['tipe_kode'] ?? 'barcode'),
+                    'settings'  => $setting,
+                  ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+  </script>
 </head>
 
 <body class="bg-gray-100 min-h-screen flex">
@@ -331,10 +399,6 @@ if (isset($_GET['action'])) {
     // Variabel global untuk menyimpan data barang
     let allBarang = [];
     let filteredBarang = [];
-    // Gunakan json_encode agar selalu string JS yang valid
-    window.APP = {
-      TIPE_KODE: <?php echo json_encode($setting['tipe_kode'] ?? 'barcode'); ?>
-    };
 
     // Fungsi untuk membuka modal
     function bukaModal() {
@@ -455,21 +519,6 @@ if (isset($_GET['action'])) {
         // Cek apakah stok sudah mencapai atau kurang dari stok minimal
         const isStokMinimum = b.stokMin > 0 && b.stok <= b.stokMin;
 
-        let cetakBtn = "";
-        if (window.APP.TIPE_KODE === "barcode") {
-          cetakBtn = `
-        <button onclick="printAsBarcode(${b.id}, 114, 6)"
-          class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-400 text-sm flex items-center justify-center">
-          <i class="fas fa-barcode mr-1"></i> Barcode
-        </button>`;
-        } else {
-          cetakBtn = `
-        <button onclick="printAsQr(${b.id}, 72, 6)"
-          class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-400 text-sm flex items-center justify-center">
-          <i class="fas fa-qrcode mr-1"></i> QR Code
-        </button>`;
-        }
-
         tbody.innerHTML += `
       <tr class="border-b hover-row ${isStokMinimum ? 'bg-yellow-100' : ''}">
         <td class="p-3 border">${b.kodeProduk || '-'}</td>
@@ -484,7 +533,7 @@ if (isset($_GET['action'])) {
             <button onclick="editBarang(${b.id})" class="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-400 text-sm flex items-center justify-center">
               <i class="fas fa-edit mr-1"></i> Edit
             </button>
-            ${cetakBtn}
+            ${buildCetakBtn(b)}
             <button onclick="hapusBarang(${b.id})" class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-500 text-sm flex items-center justify-center">
               <i class="fas fa-trash mr-1"></i> Hapus
             </button>
@@ -813,6 +862,31 @@ if (isset($_GET['action'])) {
         }
       });
     });
+
+    // helper tombol cetak yang taat setting
+    function buildCetakBtn(b) {
+      const labelCfg = (window.APP?.settings?.label) || {};
+      const tipe = (labelCfg.tipe_kode || window.APP.TIPE_KODE || 'barcode').toLowerCase();
+
+      if (tipe === 'barcode') {
+        const widthPx = labelCfg.barcode?.width_px ?? 114;
+        const perRow = labelCfg.barcode?.per_row ?? 6;
+        return `
+      <button onclick="printAsBarcode(${b.id}, ${widthPx}, ${perRow})"
+        class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-400 text-sm flex items-center justify-center">
+        <i class="fas fa-barcode mr-1"></i> Barcode
+      </button>`;
+      } else {
+        const sizePx = labelCfg.qr?.size_px ?? 72;
+        const perRow = labelCfg.qr?.per_row ?? 6;
+        return `
+      <button onclick="printAsQr(${b.id}, ${sizePx}, ${perRow})"
+        class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-400 text-sm flex items-center justify-center">
+        <i class="fas fa-qrcode mr-1"></i> QR Code
+      </button>`;
+      }
+    }
+
 
     function generateQrCode(id) {
       window.open(`print_label.php?id=${encodeURIComponent(id)}`, '_blank');

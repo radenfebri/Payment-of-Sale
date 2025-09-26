@@ -4,11 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-use Endroid\QrCode\Builder\Builder;
-use Endroid\QrCode\Encoding\Encoding;
-use Endroid\QrCode\ErrorCorrectionLevel\ErrorCorrectionLevelLow;
 use Endroid\QrCode\Writer\PngWriter;
-use Endroid\QrCode\Color\Color;
 use Picqer\Barcode\BarcodeGeneratorPNG;
 use Endroid\QrCode\QrCode;
 

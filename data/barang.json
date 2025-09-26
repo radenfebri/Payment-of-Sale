@@ -96,10 +96,10 @@
         ]
     },
     {
-        "id": 1758442445,
+        "id": "1758442445",
         "kodeProduk": "TMY291387",
         "nama": "Indomie Ayam Bawang",
-        "stok": 7,
+        "stok": 20,
         "stokMin": 20,
         "satuan": "pcs",
         "satuanHarga": [
@@ -236,6 +236,22 @@
                 "hargaModal": 1500,
                 "hargaEcer": 2000,
                 "hargaGrosir": 1800
+            }
+        ]
+    },
+    {
+        "id": 1758851017,
+        "kodeProduk": "TMY002363",
+        "nama": "tes",
+        "stok": 12,
+        "stokMin": 12,
+        "satuan": "karung",
+        "satuanHarga": [
+            {
+                "satuan": "karung",
+                "hargaModal": 1,
+                "hargaEcer": 1,
+                "hargaGrosir": 1
             }
         ]
     }
