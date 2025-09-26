@@ -67,7 +67,7 @@
         "id": 1758442443,
         "kodeProduk": "TMY291385",
         "nama": "Beras",
-        "stok": 41,
+        "stok": 40,
         "stokMin": 5,
         "satuan": "kg",
         "satuanHarga": [
@@ -211,7 +211,7 @@
         "id": 1758442452,
         "kodeProduk": "TMY291394",
         "nama": "Susu SGM Box",
-        "stok": 35,
+        "stok": 34,
         "stokMin": 5,
         "satuan": "box",
         "satuanHarga": [
@@ -240,7 +240,7 @@
         ]
     },
     {
-        "id": 1758851017,
+        "id": "1758851017",
         "kodeProduk": "TMY002363",
         "nama": "tes",
         "stok": 12,

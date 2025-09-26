@@ -933,5 +933,44 @@
         "waktu": "2025-09-24 12:09:12",
         "totalLaba": 11200,
         "recorded_in_keuangan": true
+    },
+    {
+        "items": [
+            {
+                "id": 1758442443,
+                "nama": "Beras",
+                "hargaEcer": 11500,
+                "hargaGrosir": 11000,
+                "harga": 11500,
+                "jenisHarga": "ecer",
+                "qty": 1,
+                "stok": 41,
+                "hargaModal": 9900,
+                "laba": 1600
+            },
+            {
+                "id": 1758442452,
+                "nama": "Susu SGM Box",
+                "hargaEcer": 41000,
+                "hargaGrosir": 39000,
+                "harga": 39000,
+                "jenisHarga": "grosir",
+                "qty": 1,
+                "stok": 35,
+                "hargaModal": 34000,
+                "laba": 5000
+            }
+        ],
+        "total": 50500,
+        "diskon": 0,
+        "grandTotal": 50500,
+        "bayar": 0,
+        "kembalian": 0,
+        "hutang": 50500,
+        "nama_pembeli": "Pelanggan",
+        "id": 1758860550,
+        "waktu": "2025-09-26 11:22:30",
+        "totalLaba": 6600,
+        "recorded_in_keuangan": true
     }
 ]

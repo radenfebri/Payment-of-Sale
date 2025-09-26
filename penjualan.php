@@ -61,13 +61,13 @@ if (isset($_GET['action'])) {
             $results = [];
 
             foreach ($barang as $item) {
-                if (
-                    stripos($item['nama'], $keyword) !== false ||
-                    stripos($item['kodeProduk'], $keyword) !== false
-                ) {
+                $nama = $item['nama'] ?? '';
+                $kode = $item['kodeProduk'] ?? '';
+                if (stripos($nama, $keyword) !== false || stripos($kode, $keyword) !== false) {
                     $results[] = $item;
                 }
             }
+
 
             header('Content-Type: application/json');
             echo json_encode($results);
@@ -244,7 +244,8 @@ if (isset($_GET['action'])) {
                     <h3 class="text-lg font-semibold mb-3">Cari Barang</h3>
                     <div class="flex gap-2">
                         <input type="text" id="cariBarang" placeholder="Kode atau nama barang"
-                            class="border rounded-md p-2 w-full" onkeyup="cariBarang()">
+                            class="border rounded-md p-2 w-full" autocomplete="off"
+                            onkeyup="manualKeyup(this)" />
                         <button onclick="cariBarang()" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-500">
                             <i class="fas fa-search"></i>
                         </button>
@@ -373,7 +374,141 @@ if (isset($_GET['action'])) {
         let grandTotal = 0;
         let diskon = 0;
         let lastTransaction = null;
+        let manualTimer = null;
         const settings = <?= json_encode($settings) ?>;
+
+        // === HYBRID: ketik manual + auto-scan (Enter ATAU diam) ===
+        let manualTypeTimer = null;
+
+        const SCAN = {
+            MIN_LEN: 6,
+            MAX_INTERVAL: 35,
+            END_WAIT: 80
+        }; // ms
+        let scanBuf = '';
+        let scanLastTs = 0;
+        let scanTimer = null;
+
+        function resetScan() {
+            scanBuf = '';
+            scanLastTs = 0;
+            if (scanTimer) {
+                clearTimeout(scanTimer);
+                scanTimer = null;
+            }
+        }
+
+        function finishScan(raw) {
+            const code = String(raw).replace(/[\r\n\t]+/g, '').trim();
+            resetScan();
+            if (!code) return;
+            searchByCodeOrKeyword(code, {
+                autoAdd: true
+            });
+        }
+
+
+        function manualKeyup(el) {
+            // Jika sedang ada alur scan (buffer terisi), jangan pencarian manual dulu
+            if (typeof scanBuf !== 'undefined' && scanBuf) return;
+
+            const q = el.value.trim();
+            clearTimeout(manualTimer);
+            manualTimer = setTimeout(() => {
+                if (q.length >= 2) {
+                    // mode manual: tampilkan daftar saja, tanpa auto-add
+                    searchByCodeOrKeyword(q, {
+                        autoAdd: false
+                    });
+                } else {
+                    document.getElementById('hasilPencarian').innerHTML = '';
+                }
+            }, 220); // debounce kecil biar nggak spam fetch
+        }
+
+        // Ketik manual → debounce tampilkan list (tanpa bentrok scanner)
+        document.addEventListener('DOMContentLoaded', function() {
+            const inp = document.getElementById('cariBarang');
+            const container = document.getElementById('hasilPencarian');
+            if (!inp) return;
+
+            // Ketik manual → debounce tampilkan list
+            inp.addEventListener('input', (e) => {
+                // (Opsional) kalau sedang deteksi scanner cepat, jangan panggil daftar dulu
+                if (typeof scanBuf !== 'undefined' && scanBuf) return;
+
+                if (manualTypeTimer) clearTimeout(manualTypeTimer);
+                manualTypeTimer = setTimeout(() => {
+                    const q = e.target.value.trim();
+                    if (q.length >= 2) {
+                        cariBarang(); // pakai fungsi kamu yang lama
+                        // atau: searchByCodeOrKeyword(q); // jika mau satu pintu
+                    } else {
+                        container.innerHTML = '';
+                    }
+                }, 280);
+            });
+
+            // (Opsional) biar Enter tetap jalan kalau mau
+            inp.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') cariBarang();
+            });
+        });
+
+
+
+        // Global keydown: deteksi scanner (cepat) & Enter/Tab
+        document.addEventListener('keydown', (e) => {
+            const inp = document.getElementById('cariBarang');
+            const printable = e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey;
+
+            // Pastikan fokus ke input saat ada inputan
+            if (printable && document.activeElement !== inp) inp.focus();
+
+            // Enter/Tab sering jadi suffix scanner → akhiri scan
+            if (e.key === 'Enter' || e.key === 'Tab') {
+                // Kalau sedang scan (ada buffer), akhiri & auto-add
+                if (scanBuf) {
+                    e.preventDefault();
+                    return finishScan(scanBuf);
+                }
+                // Kalau Enter saat fokus di input -> mode manual: tampilkan list saja
+                if (e.key === 'Enter' && document.activeElement === inp) {
+                    e.preventDefault();
+                    const q = inp.value.trim();
+                    if (q.length >= 2) searchByCodeOrKeyword(q, {
+                        autoAdd: false
+                    });
+                }
+                return;
+            }
+
+
+            // Kumpulkan karakter cepat untuk deteksi scan tanpa Enter
+            if (printable) {
+                const now = performance.now();
+                const gap = now - (scanLastTs || now);
+                scanLastTs = now;
+
+                if (gap <= SCAN.MAX_INTERVAL) {
+                    // masih kecepatan scanner
+                    scanBuf += e.key;
+
+                    if (scanTimer) clearTimeout(scanTimer);
+                    scanTimer = setTimeout(() => {
+                        if (scanBuf.length >= SCAN.MIN_LEN) {
+                            finishScan(scanBuf); // anggap scan selesai karena "diam"
+                        } else {
+                            resetScan(); // terlalu pendek → ketikan biasa
+                        }
+                    }, SCAN.END_WAIT);
+                } else {
+                    // jeda panjang → ketik manual, reset buffer scan
+                    resetScan();
+                }
+            }
+        });
+
 
         // Fungsi untuk memuat keranjang dari localStorage
         function muatKeranjangDariPenyimpanan() {
@@ -405,6 +540,54 @@ if (isset($_GET['action'])) {
                 }
             });
         });
+
+        // Cari satu keyword; jika cocok 1 barang / kodeProduk eksak → auto-add, kalau tidak → tampilkan list
+        async function searchByCodeOrKeyword(keyword, opts = {
+            autoAdd: true
+        }) {
+            const {
+                autoAdd = true
+            } = opts || {};
+            const inp = document.getElementById('cariBarang');
+            const container = document.getElementById('hasilPencarian');
+            const q = String(keyword ?? inp.value ?? '').trim();
+            if (!q) return;
+
+            try {
+                const res = await fetch('?action=cari_barang', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        keyword: q
+                    })
+                });
+                const items = await res.json();
+
+                // auto-add hanya jika diizinkan
+                const exact = items.find(it => String(it.kodeProduk || '').toLowerCase() === q.toLowerCase());
+                if (autoAdd && exact) {
+                    tambahKeKeranjang(exact, 'ecer');
+                    inp.value = '';
+                    container.innerHTML = '';
+                    return;
+                }
+                if (autoAdd && items.length === 1) {
+                    tambahKeKeranjang(items[0], 'ecer');
+                    inp.value = '';
+                    container.innerHTML = '';
+                    return;
+                }
+
+                // selain itu tampilkan daftar
+                tampilkanHasilPencarian(items);
+            } catch (err) {
+                console.error('searchByCodeOrKeyword error:', err);
+            }
+        }
+
+
 
         // Fungsi untuk mencari barang
         async function cariBarang() {
@@ -479,21 +662,58 @@ if (isset($_GET['action'])) {
         }
 
         // Menambah barang ke keranjang dengan jenis harga tertentu
+        // function tambahKeKeranjang(barang, jenisHarga) {
+        //     let harga = 0;
+        //     if (barang.satuanHarga && barang.satuanHarga.length > 0) {
+        //         if (jenisHarga === 'ecer') {
+        //             harga = barang.satuanHarga[0].hargaEcer;
+        //         } else if (jenisHarga === 'grosir') {
+        //             harga = barang.satuanHarga[0].hargaGrosir;
+        //         }
+        //     }
+
+        //     const index = keranjang.findIndex(item => item.id === barang.id && item.jenisHarga === jenisHarga);
+
+        //     if (index !== -1) {
+        //         if (keranjang[index].qty < barang.stok) {
+        //             keranjang[index].qty += 1;
+        //         } else {
+        //             window.showToast('Stok tidak mencukupi!', 'error', 4000);
+        //             return;
+        //         }
+        //     } else {
+        //         if (barang.stok > 0) {
+        //             keranjang.unshift({
+        //                 id: barang.id,
+        //                 nama: barang.nama,
+        //                 harga: harga,
+        //                 jenisHarga: jenisHarga,
+        //                 qty: 1,
+        //                 stok: barang.stok
+        //             });
+        //         } else {
+        //             window.showToast('Stok habis!', 'error', 4000);
+        //             return;
+        //         }
+        //     }
+
+        //     perbaruiKeranjang();
+        //     simpanKeranjangKePenyimpanan();
+        //     window.showToast(`${barang.nama} berhasil ditambahkan ke keranjang.`, 'success', 3000);
+        // }
+
         function tambahKeKeranjang(barang, jenisHarga) {
-            let harga = 0;
-            if (barang.satuanHarga && barang.satuanHarga.length > 0) {
-                if (jenisHarga === 'ecer') {
-                    harga = barang.satuanHarga[0].hargaEcer;
-                } else if (jenisHarga === 'grosir') {
-                    harga = barang.satuanHarga[0].hargaGrosir;
-                }
-            }
+            const hargaEcer = Number(barang?.satuanHarga?.[0]?.hargaEcer || 0);
+            const hargaGrosir = Number(barang?.satuanHarga?.[0]?.hargaGrosir || 0);
 
-            const index = keranjang.findIndex(item => item.id === barang.id && item.jenisHarga === jenisHarga);
+            const jenis = jenisHarga || 'ecer'; // default ecer
+            const harga = (jenis === 'grosir') ? hargaGrosir : hargaEcer;
 
-            if (index !== -1) {
-                if (keranjang[index].qty < barang.stok) {
-                    keranjang[index].qty += 1;
+            const idx = keranjang.findIndex(i => i.id === barang.id && i.jenisHarga === jenis);
+
+            if (idx !== -1) {
+                if (keranjang[idx].qty < barang.stok) {
+                    keranjang[idx].qty += 1;
                 } else {
                     window.showToast('Stok tidak mencukupi!', 'error', 4000);
                     return;
@@ -503,8 +723,10 @@ if (isset($_GET['action'])) {
                     keranjang.unshift({
                         id: barang.id,
                         nama: barang.nama,
-                        harga: harga,
-                        jenisHarga: jenisHarga,
+                        hargaEcer,
+                        hargaGrosir,
+                        harga, // harga aktif
+                        jenisHarga: jenis, // 'ecer' | 'grosir'
                         qty: 1,
                         stok: barang.stok
                     });
@@ -517,6 +739,47 @@ if (isset($_GET['action'])) {
             perbaruiKeranjang();
             simpanKeranjangKePenyimpanan();
             window.showToast(`${barang.nama} berhasil ditambahkan ke keranjang.`, 'success', 3000);
+        }
+
+
+        function ubahJenis(index, jenis) {
+            const item = keranjang[index];
+
+            // fallback untuk data lama di localStorage
+            if (item.hargaEcer == null) item.hargaEcer = Number(item.harga || 0);
+            if (item.hargaGrosir == null) item.hargaGrosir = Number(item.harga || 0);
+
+            // set jenis & harga aktif
+            item.jenisHarga = jenis;
+            item.harga = (jenis === 'grosir') ?
+                Number(item.hargaGrosir || 0) :
+                Number(item.hargaEcer || 0);
+
+            // merge bila sudah ada baris dengan id & jenis sama
+            const dupIndex = keranjang.findIndex((it, i) =>
+                i !== index && it.id === item.id && it.jenisHarga === jenis
+            );
+            if (dupIndex !== -1) {
+                const totalQty = keranjang[dupIndex].qty + item.qty;
+                keranjang[dupIndex].qty = Math.min(totalQty, item.stok);
+                keranjang.splice(index, 1);
+            }
+
+            perbaruiKeranjang();
+            simpanKeranjangKePenyimpanan();
+        }
+
+
+        function setJenisSelectColor(sel) {
+            sel.classList.remove(
+                'bg-blue-100', 'text-blue-800', 'border-blue-300',
+                'bg-green-100', 'text-green-800', 'border-green-300'
+            );
+            if (sel.value === 'grosir') {
+                sel.classList.add('bg-green-100', 'text-green-800', 'border-green-300');
+            } else {
+                sel.classList.add('bg-blue-100', 'text-blue-800', 'border-blue-300');
+            }
         }
 
 
@@ -541,6 +804,10 @@ if (isset($_GET['action'])) {
 
             keranjang.forEach((item, index) => {
                 const subtotal = item.harga * item.qty;
+                const selectColorClass =
+                    item.jenisHarga === 'grosir' ?
+                    'bg-green-100 text-green-800 border-green-300' :
+                    'bg-blue-100 text-blue-800 border-blue-300';
                 total += subtotal;
 
                 const jenisClass = item.jenisHarga === 'ecer' ?
@@ -564,7 +831,13 @@ if (isset($_GET['action'])) {
                     </div>
                 </td>
                 <td class="p-2">
-                    <span class="text-xs px-2 py-1 rounded ${jenisClass}">${item.jenisHarga}</span>
+                <select
+                    onchange="ubahJenis(${index}, this.value); setJenisSelectColor(this)"
+                    class="border rounded px-2 py-1 text-sm ${selectColorClass}"
+                >
+                    <option value="ecer" ${item.jenisHarga === 'ecer' ? 'selected' : ''}>Ecer</option>
+                    <option value="grosir" ${item.jenisHarga === 'grosir' ? 'selected' : ''}>Grosir</option>
+                </select>
                 </td>
                 <td class="p-2 font-medium">Rp ${subtotal.toLocaleString('id-ID')}</td>
                 <td class="p-2">
@@ -577,6 +850,7 @@ if (isset($_GET['action'])) {
             });
 
             container.innerHTML = html;
+            document.querySelectorAll('#keranjang select').forEach(setJenisSelectColor);
             hitungTotal();
             simpanKeranjangKePenyimpanan();
         }
@@ -601,7 +875,8 @@ if (isset($_GET['action'])) {
             if (newQty < 1) {
                 hapusDariKeranjang(index);
             } else if (newQty > keranjang[index].stok) {
-                alert('Stok tidak mencukupi!');
+                // alert('Stok tidak mencukupi!');
+                window.showToast('Stok tidak mencukupi!', 'error', 4000);
             } else {
                 keranjang[index].qty = newQty;
                 perbaruiKeranjang();
@@ -616,7 +891,8 @@ if (isset($_GET['action'])) {
             if (isNaN(newQty) || newQty < 1) {
                 keranjang[index].qty = 1;
             } else if (newQty > keranjang[index].stok) {
-                alert('Stok tidak mencukupi!');
+                // alert('Stok tidak mencukupi!');
+                window.showToast('Stok tidak mencukupi!', 'error', 4000);
                 keranjang[index].qty = keranjang[index].stok;
             } else {
                 keranjang[index].qty = newQty;
@@ -773,53 +1049,53 @@ if (isset($_GET['action'])) {
             }
         }
 
-        async function kirimTransaksi() {
-            try {
-                const response = await fetch('?action=simpan_penjualan', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        items: keranjang,
-                        total: total,
-                        diskon: diskon,
-                        grandTotal: grandTotal,
-                        bayar: bayar,
-                        kembalian: kembalian >= 0 ? kembalian : 0,
-                        hutang: hutang,
-                        nama_pembeli: namaPembeli
-                    })
-                });
+        // async function kirimTransaksi() {
+        //     try {
+        //         const response = await fetch('?action=simpan_penjualan', {
+        //             method: 'POST',
+        //             headers: {
+        //                 'Content-Type': 'application/json'
+        //             },
+        //             body: JSON.stringify({
+        //                 items: keranjang,
+        //                 total: total,
+        //                 diskon: diskon,
+        //                 grandTotal: grandTotal,
+        //                 bayar: bayar,
+        //                 kembalian: kembalian >= 0 ? kembalian : 0,
+        //                 hutang: hutang,
+        //                 nama_pembeli: namaPembeli
+        //             })
+        //         });
 
-                const result = await response.json();
+        //         const result = await response.json();
 
-                if (result.success) {
-                    if (result.hutang) {
-                        showToast(`Transaksi berhasil! Tercatat hutang sebesar Rp ${hutang.toLocaleString('id-ID')}`, 'warning');
-                    } else {
-                        showToast('Transaksi berhasil!', 'success');
-                    }
+        //         if (result.success) {
+        //             if (result.hutang) {
+        //                 showToast(`Transaksi berhasil! Tercatat hutang sebesar Rp ${hutang.toLocaleString('id-ID')}`, 'warning');
+        //             } else {
+        //                 showToast('Transaksi berhasil!', 'success');
+        //             }
 
-                    const snapshotKeranjang = JSON.parse(JSON.stringify(keranjang));
-                    tampilkanStruk(snapshotKeranjang, total, diskon, grandTotal, bayar, kembalian, hutang, namaPembeli);
+        //             const snapshotKeranjang = JSON.parse(JSON.stringify(keranjang));
+        //             tampilkanStruk(snapshotKeranjang, total, diskon, grandTotal, bayar, kembalian, hutang, namaPembeli);
 
-                    hapusKeranjangDariPenyimpanan();
-                    keranjang = [];
-                    perbaruiKeranjang();
-                    document.getElementById('bayar').value = '';
-                    document.getElementById('diskon').value = '0';
-                    document.getElementById('namaPembeli').value = '';
-                    document.getElementById('kembalian').value = '';
-                    document.getElementById('hutangContainer').classList.add('hidden');
-                } else {
-                    showToast('Gagal memproses pembayaran: ' + (result.error || 'Unknown error'), 'error');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                showToast('Terjadi kesalahan: ' + error.message, 'error');
-            }
-        }
+        //             hapusKeranjangDariPenyimpanan();
+        //             keranjang = [];
+        //             perbaruiKeranjang();
+        //             document.getElementById('bayar').value = '';
+        //             document.getElementById('diskon').value = '0';
+        //             document.getElementById('namaPembeli').value = '';
+        //             document.getElementById('kembalian').value = '';
+        //             document.getElementById('hutangContainer').classList.add('hidden');
+        //         } else {
+        //             showToast('Gagal memproses pembayaran: ' + (result.error || 'Unknown error'), 'error');
+        //         }
+        //     } catch (error) {
+        //         console.error('Error:', error);
+        //         showToast('Terjadi kesalahan: ' + error.message, 'error');
+        //     }
+        // }
 
 
         // Menampilkan struk

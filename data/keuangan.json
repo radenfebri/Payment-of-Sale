@@ -194,5 +194,12 @@
         "jumlah": 11200,
         "keterangan": "Penjualan: Paijok (Sebagian, hutang: 59200)",
         "tanggal": "2025-09-24 12:09:12"
+    },
+    {
+        "id": "68d6150d2473e",
+        "jenis": "pemasukan",
+        "jumlah": 6600,
+        "keterangan": "Penjualan: Pelanggan (Hutang penuh: 50500)",
+        "tanggal": "2025-09-26 11:22:30"
     }
 ]
