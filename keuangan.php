@@ -194,11 +194,10 @@ if (isset($_GET['action'])) {
 
             // Filter transaksi keuangan berdasarkan bulan dan tahun
             $keuanganBulanan = array_filter($keuangan, function ($k) use ($tahun, $bulan) {
-                // Pastikan format tanggal sesuai
                 $tanggal = $k['tanggal'];
                 if (strpos($tanggal, 'T') !== false) {
-                    // Format: YYYY-MM-DDTHH:MM
-                    $tanggal = substr($tanggal, 0, 10); // Ambil hanya bagian tanggal
+                    // Format ISO, ambil bagian tanggal saja
+                    $tanggal = substr($tanggal, 0, 10);
                 }
                 $tanggalTransaksi = date('Y-m', strtotime($tanggal));
                 return $tanggalTransaksi === "$tahun-$bulan";
@@ -211,13 +210,7 @@ if (isset($_GET['action'])) {
 
             // Hitung total laba dari penjualan
             $totalLaba = array_reduce($penjualanBulanan, function ($sum, $p) {
-                // Gunakan totalLaba jika ada, jika tidak gunakan perhitungan lama
-                if (isset($p['totalLaba'])) {
-                    return $sum + $p['totalLaba'];
-                } else {
-                    // Fallback jika totalLaba tidak ada
-                    return $sum + $p['grandTotal'];
-                }
+                return $sum + ($p['totalLaba'] ?? $p['grandTotal']);
             }, 0);
 
             // Hitung total transaksi
@@ -226,27 +219,31 @@ if (isset($_GET['action'])) {
             // Hitung total piutang
             $piutangBulanan = 0;
             foreach ($penjualanBulanan as $p) {
-                if (isset($p['hutang']) && $p['hutang'] > 0) {
+                if (!empty($p['hutang']) && $p['hutang'] > 0) {
                     $piutangBulanan += $p['hutang'];
                 }
             }
 
-            // Hitung pemasukan dan pengeluaran lain
+            // Hitung pemasukan & pengeluaran lain (hindari double-count penjualan)
             $pemasukanLain = 0;
             $pengeluaranLain = 0;
 
             foreach ($keuanganBulanan as $k) {
-                if ($k['jenis'] === 'pemasukan') {
+                $jenis = $k['jenis'] ?? '';
+                $ket   = $k['keterangan'] ?? '';
+                $isPenjualan = stripos($ket, 'Penjualan:') === 0;
+
+                if ($jenis === 'pemasukan' && !$isPenjualan) {
                     $pemasukanLain += $k['jumlah'];
-                } else {
+                } elseif ($jenis === 'pengeluaran') {
                     $pengeluaranLain += $k['jumlah'];
                 }
             }
 
-            // Hitung total pemasukan dan pengeluaran
-            $totalPemasukan = $totalLaba + $pemasukanLain; // Gunakan laba, bukan total penjualan
+            // Total pemasukan = laba penjualan + pemasukan lain
+            $totalPemasukan   = $totalLaba + $pemasukanLain;
             $totalPengeluaran = $pengeluaranLain;
-            $saldoBulanan = $totalPemasukan - $totalPengeluaran;
+            $saldoBulanan     = $totalPemasukan - $totalPengeluaran;
 
             // Produk terlaris bulanan
             $produkTerjualBulanan = [];
@@ -274,15 +271,15 @@ if (isset($_GET['action'])) {
 
             header('Content-Type: application/json');
             echo json_encode([
-                'totalPenjualan' => $totalPenjualan,
-                'totalLaba' => $totalLaba, // Tambahkan totalLaba ke response
-                'totalTransaksi' => $totalTransaksi,
-                'piutangBulanan' => $piutangBulanan,
-                'pemasukanLain' => $pemasukanLain,
-                'pengeluaranLain' => $pengeluaranLain,
-                'totalPemasukan' => $totalPemasukan,
+                'totalPenjualan'   => $totalPenjualan,
+                'totalLaba'        => $totalLaba,
+                'totalTransaksi'   => $totalTransaksi,
+                'piutangBulanan'   => $piutangBulanan,
+                'pemasukanLain'    => $pemasukanLain,
+                'pengeluaranLain'  => $pengeluaranLain,
+                'totalPemasukan'   => $totalPemasukan,
                 'totalPengeluaran' => $totalPengeluaran,
-                'saldoBulanan' => $saldoBulanan,
+                'saldoBulanan'     => $saldoBulanan,
                 'topProdukBulanan' => $topProdukBulanan,
                 'transaksiKeuangan' => $keuanganBulanan
             ]);
@@ -1270,52 +1267,80 @@ if (isset($_GET['action'])) {
                 });
 
                 let html = `
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div class="bg-blue-50 p-4 rounded-lg">
-                    <p class="text-blue-600 font-semibold">Total Penjualan</p>
-                    <p class="text-2xl font-bold">${formatRupiah(data.totalPenjualan)}</p>
-                    <p class="text-sm text-gray-600">${data.totalTransaksi} transaksi</p>
-                </div>
-                <div class="bg-green-50 p-4 rounded-lg">
-                    <p class="text-green-600 font-semibold">Total Pemasukan</p>
-                    <p class="text-2xl font-bold">${formatRupiah(data.totalPemasukan)}</p>
-                    <p class="text-sm text-gray-600">+ ${formatRupiah(data.pemasukanLain)} lainnya</p>
-                </div>
-                <div class="bg-red-50 p-4 rounded-lg">
-                    <p class="text-red-600 font-semibold">Total Pengeluaran</p>
-                    <p class="text-2xl font-bold">${formatRupiah(data.totalPengeluaran)}</p>
-                    <p class="text-sm text-gray-600">Piutang: ${formatRupiah(data.piutangBulanan)}</p>
-                </div>
-            </div>
+                            <div class="mb-6">
+                                <h4 class="font-semibold mb-3">Ringkasan Bulanan</h4>
+                                <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse">
+                                    <thead>
+                                    <tr class="bg-gray-100">
+                                        <th class="p-2 border">Keterangan</th>
+                                        <th class="p-2 border text-right">Jumlah</th>
+                                        <th class="p-2 border text-right">Catatan</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr>
+                                        <td class="p-2 border">Total Penjualan</td>
+                                        <td class="p-2 border text-right font-semibold">${formatRupiah(data.totalPenjualan)}</td>
+                                        <td class="p-2 border text-right">${data.totalTransaksi} transaksi</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="p-2 border">Total Pemasukan</td>
+                                        <td class="p-2 border text-right font-semibold text-green-600">${formatRupiah(data.totalPemasukan)}</td>
+                                        <td class="p-2 border text-right">+ ${formatRupiah(data.pemasukanLain)} lainnya</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="p-2 border">Total Pengeluaran</td>
+                                        <td class="p-2 border text-right font-semibold text-red-600">${formatRupiah(data.totalPengeluaran)}</td>
+                                        <td class="p-2 border text-right">Piutang: ${formatRupiah(data.piutangBulanan)}</td>
+                                    </tr>
+                                    <tr class="bg-gray-50 font-bold">
+                                        <td class="p-2 border">Saldo Bulanan</td>
+                                        <td class="p-2 border text-right ${
+                                        data.saldoBulanan >= 0 ? 'text-green-600' : 'text-red-600'
+                                        }">${formatRupiah(data.saldoBulanan)}</td>
+                                        <td class="p-2 border text-right">—</td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                                </div>
+                            </div>
             
-            <div class="bg-gray-50 p-4 rounded-lg mb-6">
-                <p class="text-lg font-semibold text-center">SALDO BULANAN: ${formatRupiah(data.saldoBulanan)}</p>
-            </div>
-            
-            <div class="mb-6">
-                <h4 class="font-semibold mb-3 text-center md:text-left">Produk Terlaris Bulan Ini</h4>
-        `;
+                        <div class="mb-6">
+                            <h4 class="font-semibold mb-3 text-center md:text-left">Produk Terlaris Bulan Ini</h4>
+                    `;
 
                 if (data.topProdukBulanan.length > 0) {
-                    html += `<div class="space-y-2">`;
-                    data.topProdukBulanan.forEach((item, index) => {
-                        html += `
-                    <div class="flex justify-between items-center border-b pb-2">
-                        <div class="flex items-center">
-                            <span class="bg-blue-100 text-blue-800 text-xs font-semibold w-5 h-5 rounded-full flex items-center justify-center mr-2">${index + 1}</span>
-                            <div class="max-w-[150px] md:max-w-none truncate md:truncate-none">
-                                <p class="font-medium text-sm">${item.nama}</p>
-                                <p class="text-xs text-gray-600">${item.terjual} terjual</p>
+                    html += `
+                        <div class="mb-6">
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr class="bg-gray-100">
+                                            <th class="p-2 border">No</th>
+                                            <th class="p-2 border">Produk</th>
+                                            <th class="p-2 border text-right">Terjual</th>
+                                            <th class="p-2 border text-right">Pendapatan</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${data.topProdukBulanan.map((item, index) => `
+                                            <tr>
+                                                <td class="p-2 border">${index + 1}</td>
+                                                <td class="p-2 border">${item.nama}</td>
+                                                <td class="p-2 border text-right">${item.terjual}</td>
+                                                <td class="p-2 border text-right">${formatRupiah(item.pendapatan)}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
-                        <span class="font-semibold text-sm">${formatRupiah(item.pendapatan)}</span>
-                    </div>
-                `;
-                    });
-                    html += `</div>`;
+                        `;
                 } else {
                     html += `<p class="text-gray-500 text-center py-4">Tidak ada data penjualan</p>`;
                 }
+
 
                 html += `</div>`;
 
@@ -1393,164 +1418,133 @@ if (isset($_GET['action'])) {
                 year: 'numeric'
             });
 
-            // Ambil konten laporan untuk dicetak
             const reportContent = document.getElementById('monthlyReport').innerHTML;
 
-            // Hapus elemen yang tidak perlu untuk dicetak
+            // Bersihkan elemen interaktif (jika ada)
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = reportContent;
-
-            // Hapus tombol dan elemen interaktif
-            const buttons = tempDiv.querySelectorAll('button');
-            buttons.forEach(button => button.remove());
-
+            tempDiv.querySelectorAll('button, .no-print').forEach(el => el.remove());
             const cleanedContent = tempDiv.innerHTML;
 
             const printWindow = window.open('', '_blank');
             printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
+            <!DOCTYPE html>
+            <html>
+            <head>
+            <meta charset="utf-8" />
             <title>Laporan Keuangan ${namaBulan} - Toko Muda Yakin</title>
             <style>
-                body { 
-                    font-family: Arial, sans-serif; 
-                    margin: 15px; 
-                    font-size: 12px;
-                    color: #000;
+                :root {
+                --fs-base: 12px;
+                --fs-sm: 11px;
+                --fs-lg: 14px;
                 }
-                .header { 
-                    text-align: center; 
-                    margin-bottom: 20px;
-                    border-bottom: 2px solid #333;
-                    padding-bottom: 10px;
+                @page { size: A4 portrait; margin: 12mm; }
+                @media print {
+                body { margin: 0; }
+                .no-print { display: none !important; }
+                .avoid-break { break-inside: avoid; page-break-inside: avoid; }
+                table { break-inside: auto; page-break-inside: auto; }
+                tr, img, .summary-box, .saldo-box { break-inside: avoid; page-break-inside: avoid; }
                 }
-                .header h1 {
-                    font-size: 18px;
-                    margin: 0;
-                    font-weight: bold;
+                body {
+                font-family: Arial, Helvetica, sans-serif;
+                font-size: var(--fs-base);
+                color: #000;
                 }
-                .header h2 {
-                    font-size: 16px;
-                    margin: 5px 0;
-                    color: #555;
+                .header {
+                text-align: center;
+                margin-bottom: 16px;
+                border-bottom: 2px solid #333;
+                padding-bottom: 8px;
                 }
+                .header h1 { font-size: 18px; margin: 0; font-weight: bold; }
+                .header h2 { font-size: 15px; margin: 4px 0 0; color: #444; }
                 .grid-cols-3 {
-                    display: grid;
-                    grid-template-columns: repeat(3, 1fr);
-                    gap: 10px;
-                    margin-bottom: 15px;
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 8px;
+                margin-bottom: 12px;
                 }
                 .summary-box {
-                    border: 1px solid #ddd;
-                    padding: 10px;
-                    border-radius: 5px;
-                    text-align: center;
+                border: 1px solid #ddd;
+                padding: 8px;
+                border-radius: 5px;
+                text-align: center;
                 }
                 .summary-box p:first-child {
-                    font-weight: bold;
-                    margin: 0 0 5px 0;
-                    font-size: 11px;
+                font-weight: 700;
+                margin: 0 0 4px 0;
+                font-size: var(--fs-sm);
                 }
                 .summary-box p:nth-child(2) {
-                    font-size: 14px;
-                    font-weight: bold;
-                    margin: 5px 0;
+                font-size: var(--fs-lg);
+                font-weight: 700;
+                margin: 4px 0;
                 }
                 .summary-box p:last-child {
-                    font-size: 10px;
-                    margin: 0;
-                    color: #666;
+                font-size: 10px;
+                margin: 0;
+                color: #666;
                 }
                 .saldo-box {
-                    background-color: #f9fafb;
-                    padding: 10px;
-                    border-radius: 5px;
-                    text-align: center;
-                    margin-bottom: 15px;
-                    border: 1px solid #ddd;
+                background: #f9fafb;
+                border: 1px solid #ddd;
+                padding: 8px;
+                border-radius: 5px;
+                text-align: center;
+                margin: 10px 0 12px;
                 }
-                .saldo-box p {
-                    font-weight: bold;
-                    font-size: 14px;
-                    margin: 0;
-                }
+                .saldo-box p { font-weight: 700; font-size: var(--fs-lg); margin: 0; }
                 table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    margin-bottom: 15px;
-                    font-size: 11px;
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 12px;
+                font-size: var(--fs-sm);
                 }
-                th, td {
-                    border: 1px solid #ddd;
-                    padding: 6px;
-                    text-align: left;
-                }
-                th {
-                    background-color: #f5f5f5;
-                    font-weight: bold;
-                }
-                .footer {
-                    margin-top: 20px;
-                    text-align: right;
-                    font-size: 10px;
-                    color: #666;
-                    border-top: 1px solid #ddd;
-                    padding-top: 10px;
-                }
+                th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
+                th { background: #f5f5f5; font-weight: 700; }
                 .text-green-600 { color: #16a34a; }
                 .text-red-600 { color: #dc2626; }
                 .text-blue-600 { color: #2563eb; }
-                .bg-blue-50 { background-color: #eff6ff; }
-                .bg-green-50 { background-color: #f0fdf4; }
-                .bg-red-50 { background-color: #fef2f2; }
-                .bg-gray-50 { background-color: #f9fafb; }
-                .space-y-2 > * {
-                    margin-bottom: 8px;
-                }
-                .flex.justify-between {
-                    display: flex;
-                    justify-content: space-between;
-                }
-                .flex.items-center {
-                    display: flex;
-                    align-items: center;
-                }
-                @media print {
-                    body { margin: 10mm; }
-                    .summary-box { break-inside: avoid; }
-                    table { break-inside: avoid; }
+                .footer {
+                margin-top: 14px;
+                text-align: right;
+                font-size: 10px;
+                color: #666;
+                border-top: 1px solid #ddd;
+                padding-top: 8px;
                 }
             </style>
-        </head>
-        <body>
-            <div class="header">
+            </head>
+            <body>
+            <div class="header avoid-break">
                 <h1>TOKO MUDA YAKIN</h1>
                 <h2>Laporan Keuangan ${namaBulan}</h2>
             </div>
-            
-            ${cleanedContent}
-            
-            <div class="footer">
-                <p>Dicetak pada: ${new Date().toLocaleDateString('id-ID', { 
-                    day: '2-digit', 
-                    month: 'long', 
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                })}</p>
-            </div>
-        </body>
-        </html>
-    `);
-            printWindow.document.close();
 
-            // Tunggu sebentar sebelum mencetak agar styles terload
-            setTimeout(() => {
-                printWindow.print();
-                // printWindow.close(); // Opsional: tutup window setelah cetak
-            }, 250);
+            <div class="content">
+                ${cleanedContent}
+            </div>
+
+            <div class="footer avoid-break">
+                <p>Dicetak pada: ${(() => {
+                const now = new Date();
+                const dd = String(now.getDate()).padStart(2,'0');
+                const mm = String(now.getMonth()+1).padStart(2,'0');
+                const yyyy = now.getFullYear();
+                const hh = String(now.getHours()).padStart(2,'0');
+                const min = String(now.getMinutes()).padStart(2,'0');
+                return dd + '-' + mm + '-' + yyyy + ' ' + hh + ':' + min;
+                })()}</p>
+            </div>
+            </body>
+            </html>
+            `);
+            printWindow.document.close();
+            setTimeout(() => printWindow.print(), 250);
         }
+
 
         // Handle form transaksi keuangan
         document.getElementById('formTransaksiKeuangan').addEventListener('submit', async function(e) {

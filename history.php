@@ -87,8 +87,26 @@ if (isset($_GET['action'])) {
     <title>History Transaksi - POS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/id.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/rangePlugin.js"></script>
     <script src="alert.js"></script>
     <style>
+        .flatpickr-day.inRange,
+        .flatpickr-day.inRange:focus,
+        .flatpickr-day.inRange:hover {
+            background: #e5e7eb;
+            border-color: #e5e7eb;
+            color: #111827;
+        }
+
+        .flatpickr-day.startRange,
+        .flatpickr-day.endRange {
+            background: #9ca3af;
+            color: #fff;
+        }
+
         /* CSS untuk tabel sticky */
         .table-container {
             max-height: 500px;
@@ -162,11 +180,11 @@ if (isset($_GET['action'])) {
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-red-700 mb-1">Tanggal Mulai</label>
-                    <input type="date" id="bulkDeleteStart" class="w-full border border-red-300 rounded-md p-2">
+                    <input type="text" id="bulkDeleteStart" class="w-full border border-red-300 rounded-md p-2">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-red-700 mb-1">Tanggal Akhir</label>
-                    <input type="date" id="bulkDeleteEnd" class="w-full border border-red-300 rounded-md p-2">
+                    <input type="text" id="bulkDeleteEnd" class="w-full border border-red-300 rounded-md p-2">
                 </div>
                 <div class="flex items-end">
                     <button onclick="confirmBulkDelete()" class="bg-red-600 text-white px-6 py-2 rounded-md hover:bg-red-500 mr-2">
@@ -185,11 +203,11 @@ if (isset($_GET['action'])) {
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Mulai</label>
-                    <input type="date" id="filterStart" class="w-full border rounded-md p-2">
+                    <input type="text" id="filterStart" class="w-full border rounded-md p-2">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Akhir</label>
-                    <input type="date" id="filterEnd" class="w-full border rounded-md p-2">
+                    <input type="text" id="filterEnd" class="w-full border rounded-md p-2">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Nama Pembeli</label>
@@ -293,7 +311,7 @@ if (isset($_GET['action'])) {
                 year: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit'
-            });
+            }).replace(/\./g, ':'); // jaga kalau ada titik di jam
         }
 
         // Fungsi untuk mendapatkan tanggal dalam format YYYY-MM-DD dari string waktu (GMT+7)
@@ -303,24 +321,58 @@ if (isset($_GET['action'])) {
             return date.toISOString().split('T')[0];
         }
 
+        // Set filter ke tanggal paling tua & paling baru dari data
+        function setFilterToDataExtent(list) {
+            if (!Array.isArray(list) || list.length === 0) return;
+
+            // Ambil tanggal "YYYY-MM-DD" dari field 'waktu' (pakai helper Anda yang sudah GMT+7)
+            const dates = list
+                .map(t => getDatePart(t.waktu))
+                .filter(Boolean)
+                .sort(); // aman utk format YYYY-MM-DD
+
+            const min = dates[0];
+            const max = dates[dates.length - 1];
+
+            // isi input
+            document.getElementById('filterStart').value = formatDMY(new Date(min));
+            document.getElementById('filterEnd').value = formatDMY(new Date(max));
+
+            // update highlight Flatpickr kalau ada (fpFilter dari inisialisasi range sebelumnya)
+            if (window.fpFilter && typeof fpFilter.setRange === 'function') {
+                fpFilter.setRange(new Date(min), new Date(max), false);
+            }
+
+            // langsung tampilkan data sesuai rentang
+            filterTransaksi();
+        }
+
+
         // Muat data transaksi
         async function muatHistoryTransaksi() {
             try {
                 const response = await fetch('history.php?action=get_history');
                 currentTransactions = await response.json();
-                tampilkanHistoryTransaksi(currentTransactions);
+
+                // SET DEFAULT RANGE = min..max dari data
+                setFilterToDataExtent(currentTransactions);
+
+                // Kalau ingin tetap render full tanpa filter, bisa panggil langsung:
+                // tampilkanHistoryTransaksi(currentTransactions);
+
             } catch (error) {
                 console.error('Error:', error);
                 document.getElementById('daftarTransaksi').innerHTML = `
             <tr id="emptyTransaction"><td colspan="8" class="p-4 text-center text-red-500">Gagal memuat data transaksi</td></tr>
-        `;
+            `;
             }
         }
 
+
         // Filter transaksi
         function filterTransaksi() {
-            const startDate = document.getElementById('filterStart').value;
-            const endDate = document.getElementById('filterEnd').value;
+            const startDate = parseDMY(document.getElementById('filterStart').value);
+            const endDate   = parseDMY(document.getElementById('filterEnd').value);
             const nama = document.getElementById('filterNama').value.toLowerCase();
 
             let filteredData = [...currentTransactions];
@@ -428,17 +480,20 @@ if (isset($_GET['action'])) {
             const section = document.getElementById('bulkDeleteSection');
             section.classList.toggle('hidden');
 
-            // Reset dates when showing
             if (!section.classList.contains('hidden')) {
-                document.getElementById('bulkDeleteStart').value = '';
-                document.getElementById('bulkDeleteEnd').value = '';
+                const today = new Date();
+                // set input + highlight
+                if (fpBulk) fpBulk.setRange(today, today, false);
+                document.getElementById('bulkDeleteStart').value = formatDMY(today);
+                document.getElementById('bulkDeleteEnd').value = formatDMY(today);
             }
         }
 
+
         // Confirm bulk delete
         function confirmBulkDelete() {
-            const startDate = document.getElementById('bulkDeleteStart').value;
-            const endDate = document.getElementById('bulkDeleteEnd').value;
+            const startDate = parseDMY(document.getElementById('bulkDeleteStart').value);
+            const endDate   = parseDMY(document.getElementById('bulkDeleteEnd').value);
 
             if (!startDate || !endDate) {
                 showToast('Harap pilih tanggal mulai dan tanggal akhir', 'error');
@@ -570,20 +625,101 @@ if (isset($_GET['action'])) {
             document.getElementById('modalDetail').classList.add('hidden');
         }
 
-        // Muat data saat halaman dimuat
-        document.addEventListener('DOMContentLoaded', function() {
-            // Set default filter dates to current month (GMT+7)
-            const now = new Date();
-            now.setHours(now.getHours() + 7); // GMT+7
+        // helper
+        function toYMD(d) {
+            return d.toISOString().split('T')[0];
+        }
 
+        function endOfDay(d) {
+            d.setHours(23, 59, 59, 999);
+            return d;
+        }
+
+        function formatDMY(date) {
+            const d = new Date(date);
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const year = d.getFullYear();
+            return `${day}-${month}-${year}`;
+        }
+
+        function parseDMY(str) {
+            // str: "dd-mm-yyyy" -> "yyyy-mm-dd"
+            if (!str) return '';
+            const [d, m, y] = str.split('-');
+            return `${y}-${m}-${d}`;
+        }
+
+
+        // Inisialisasi range picker untuk pasangan input (startId, endId)
+        function initDateRangePair(startId, endId, defaultStart, defaultEnd, onApplied) {
+            // set default ke input bila kosong (agar defaultDate tidak error)
+            const startEl = document.getElementById(startId);
+            const endEl = document.getElementById(endId);
+
+            if (!startEl.value) startEl.value = formatDMY(defaultStart);
+            if (!endEl.value) endEl.value = formatDMY(defaultEnd);
+
+            const fp = flatpickr(`#${startId}`, {
+                locale: flatpickr.l10ns.id,
+                dateFormat: "d-m-Y", // ✅ gunakan format dd-mm-yyyy
+                altInput: false, // jangan munculkan input kedua
+                plugins: [new rangePlugin({
+                    input: `#${endId}`
+                })],
+                defaultDate: startEl.value,
+                onClose: (dates) => {
+                    if (dates.length === 2) {
+                        const [s, e] = dates;
+                        startEl.value = formatDMY(s);
+                        endEl.value = formatDMY(e);
+                        if (typeof onApplied === 'function') onApplied(s, endOfDay(new Date(e)));
+                    }
+                }
+            });
+
+
+            // fungsi bantu untuk update highlight dari kode lain (reset dsb.)
+            return {
+                setRange: (s, e, applyCallback = true) => {
+                    startEl.value = formatDMY(s);
+                    endEl.value = formatDMY(e);
+                    fp.setDate([s, e], applyCallback); // true: trigger onClose/onChange
+                }
+            };
+        }
+
+        // ====== PANGGIL SAAT HALAMAN DIMUAT ======
+        let fpFilter, fpBulk;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Default pakai bulan ini (untuk fallback saja)
+            const now = new Date();
+            now.setHours(now.getHours() + 7);
             const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
             const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-            document.getElementById('filterStart').value = firstDay.toISOString().split('T')[0];
-            document.getElementById('filterEnd').value = lastDay.toISOString().split('T')[0];
+            document.getElementById('filterStart').value = formatDMY(firstDay);
+            document.getElementById('filterEnd').value = formatDMY(lastDay);
 
+            // Init Flatpickr
+            fpFilter = initDateRangePair(
+                'filterStart', 'filterEnd',
+                firstDay, lastDay,
+                () => filterTransaksi()
+            );
+
+            const today = new Date();
+            fpBulk = initDateRangePair(
+                'bulkDeleteStart', 'bulkDeleteEnd',
+                today, today,
+                () => {}
+            );
+
+            // Baru load data (dan nanti set ulang min–max lewat setFilterToDataExtent)
             muatHistoryTransaksi();
         });
+
 
         function cetakStrukDetail() {
             const index = document.getElementById('detailContent').dataset.index;

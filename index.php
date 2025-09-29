@@ -9,8 +9,27 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/id.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/rangePlugin.js"></script>
+
 
   <style>
+    .flatpickr-day.inRange,
+    .flatpickr-day.inRange:focus,
+    .flatpickr-day.inRange:hover {
+      background: #e5e7eb;
+      border-color: #e5e7eb;
+      color: #111827;
+    }
+
+    .flatpickr-day.startRange,
+    .flatpickr-day.endRange {
+      background: #9ca3af;
+      color: #fff;
+    }
+
     .chart-container {
       position: relative;
       height: 250px;
@@ -277,20 +296,51 @@
       return saldo;
     }
 
-    // Filter data by date range
+    // Filter data by date range (mendukung 1 atau beberapa field tanggal)
     function filterDataByDate(data, dateField) {
       if (!dateFilter.startDate && !dateFilter.endDate) return data;
 
+      // Helper ambil tanggal terbaik dari item
+      const getItemDate = (item) => {
+        const fields = Array.isArray(dateField) ? dateField : [dateField];
+        for (const f of fields) {
+          if (!f) continue;
+          const raw = item[f];
+          if (!raw) continue;
+
+          // Parsing aman: dukung "YYYY-MM-DD", "YYYY-MM-DD HH:mm:ss", atau ISO
+          let d;
+          if (typeof raw === 'string') {
+            if (raw.includes('T')) {
+              d = new Date(raw);
+            } else if (raw.includes(' ')) {
+              const [datePart, timePart] = raw.split(' ');
+              const [y, m, dd] = datePart.split('-').map(Number);
+              const [hh = 0, mm = 0, ss = 0] = (timePart || '').split(':').map(Number);
+              d = new Date(y, (m || 1) - 1, dd || 1, hh, mm, ss);
+            } else {
+              const [y, m, dd] = raw.split('-').map(Number);
+              d = new Date(y, (m || 1) - 1, dd || 1);
+            }
+          } else if (raw instanceof Date) {
+            d = raw;
+          }
+
+          if (d && !isNaN(d.getTime())) return d;
+        }
+        return null;
+      };
+
       return data.filter(item => {
-        const itemDate = new Date(item[dateField]);
-        if (isNaN(itemDate.getTime())) return false;
+        const d = getItemDate(item);
+        if (!d) return false;
 
-        if (dateFilter.startDate && itemDate < dateFilter.startDate) return false;
-        if (dateFilter.endDate && itemDate > dateFilter.endDate) return false;
-
+        if (dateFilter.startDate && d < dateFilter.startDate) return false;
+        if (dateFilter.endDate && d > dateFilter.endDate) return false;
         return true;
       });
     }
+
 
 
     // Get date range text for display
@@ -339,20 +389,79 @@
 
     // Reset date filter
     document.getElementById('resetFilter')?.addEventListener('click', function() {
-      document.getElementById('startDate').value = '';
-      document.getElementById('endDate').value = '';
-      dateFilter.startDate = null;
-      dateFilter.endDate = null;
+      const end = new Date();
+      const start = new Date();
+      start.setDate(end.getDate() - 6);
+
+      const toYMD = (d) => d.toISOString().split('T')[0];
+
+      document.getElementById('startDate').value = toYMD(start);
+      document.getElementById('endDate').value = toYMD(end);
+
+      dateFilter.startDate = new Date(toYMD(start));
+      dateFilter.endDate = endOfDay(new Date(toYMD(end)));
+
+      // update highlight di flatpickr
+      if (window._fpRange) window._fpRange.setDate([start, end], true);
+
       renderFilteredData();
     });
 
+
     // Set default date values (today)
     function setDefaultDates() {
-      const today = new Date();
-      const todayFormatted = today.toISOString().split('T')[0];
-      document.getElementById('startDate').value = todayFormatted;
-      document.getElementById('endDate').value = todayFormatted;
+      const end = new Date(); // hari ini
+      const start = new Date();
+      start.setDate(end.getDate() - 6); // 7 hari terakhir (termasuk hari ini)
+
+      const toYMD = (d) => d.toISOString().split('T')[0];
+      document.getElementById('startDate').value = toYMD(start);
+      document.getElementById('endDate').value = toYMD(end);
+
+      // sinkronkan ke state filter
+      dateFilter.startDate = new Date(document.getElementById('startDate').value);
+      dateFilter.endDate = new Date(document.getElementById('endDate').value);
+      dateFilter.endDate.setHours(23, 59, 59, 999);
     }
+
+    function endOfDay(d) {
+      d.setHours(23, 59, 59, 999);
+      return d;
+    }
+
+    function initDateRangePicker() {
+      // Inisialisasi Flatpickr di input startDate & hubungkan ke endDate
+      if (window._fpRange) return; // cegah double-init
+
+      window._fpRange = flatpickr("#startDate", {
+        locale: flatpickr.l10ns.id,
+        dateFormat: "Y-m-d",
+        plugins: [new rangePlugin({
+          input: "#endDate"
+        })],
+        // pakai default yang sudah di-set oleh setDefaultDates()
+        defaultDate: [
+          document.getElementById('startDate').value,
+          document.getElementById('endDate').value
+        ],
+        onClose: (selectedDates) => {
+          // ketika user pilih rentang, langsung sync ke state & render
+          if (selectedDates.length === 2) {
+            const [s, e] = selectedDates;
+            const toYMD = (d) => d.toISOString().split('T')[0];
+
+            document.getElementById('startDate').value = toYMD(s);
+            document.getElementById('endDate').value = toYMD(e);
+
+            dateFilter.startDate = new Date(toYMD(s));
+            dateFilter.endDate = endOfDay(new Date(toYMD(e)));
+
+            renderFilteredData();
+          }
+        }
+      });
+    }
+
 
     async function loadAllData() {
       try {
@@ -368,6 +477,7 @@
 
         console.log('All data loaded successfully');
         setDefaultDates();
+        initDateRangePicker();
         renderFilteredData();
       } catch (error) {
         console.error("Error loading all data:", error);
@@ -375,19 +485,23 @@
     }
 
     function renderFilteredData() {
-      // Filter data based on date range
+      // Filter sesuai date range
       const filteredPenjualan = filterDataByDate(allPenjualanData, 'waktu');
       const filteredKeuangan = filterDataByDate(allKeuanganData, 'tanggal');
+
+      // Piutang: coba beberapa field tanggal umum
+      const filteredPiutang = filterDataByDate(allPiutangData, ['tanggal', 'waktu', 'created_at', 'tgl']);
+
       const saldo = calculateSaldo(filteredKeuangan);
 
-      // Update UI with filtered data
-      updateSummary(allBarangData, allPiutangData, filteredPenjualan, filteredKeuangan);
+      // Update UI pakai data yg sudah difilter (PIUTANG JUGA!)
+      updateSummary(allBarangData, filteredPiutang, filteredPenjualan, filteredKeuangan);
       renderRecentTransactions(filteredPenjualan);
       renderCharts(filteredPenjualan, allBarangData);
 
-      // Update date range text
       document.getElementById('dateRange').innerText = getDateRangeText();
     }
+
 
     function updateSummary(barang, piutang, penjualan, keuangan) {
       // Update total barang
