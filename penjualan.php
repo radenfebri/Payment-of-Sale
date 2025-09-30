@@ -925,19 +925,25 @@ if (isset($_GET['action'])) {
             hitungKembalian();
         }
 
-        // Mengubah kuantitas item
-        function ubahQtyManual(index, value) {
-            const item = keranjang[index];
-            const stok = item.stok;
-            const otherQty = qtyInCartById(item.id, index);
-            let newQty = parseInt(value);
 
-            if (isNaN(newQty) || newQty < 1) newQty = 1;
+        // === TAMBAHKAN: handler tombol +/- ===
+        function ubahQty(index, delta) {
+            const item = keranjang[index];
+            if (!item) return;
+
+            const stok = Number(item.stok || 0);
+
+            // qty yang sudah ada untuk produk ini di baris lain (ecer/grosir lain)
+            const otherQty = qtyInCartById(item.id, index);
+
+            let newQty = Number(item.qty || 1) + Number(delta || 0);
+            if (newQty < 1) newQty = 1;
+
+            // Validasi stok: total (qty baris ini + baris lain) tidak boleh > stok
             if (otherQty + newQty > stok) {
                 const sisa = Math.max(0, stok - otherQty);
                 window.showToast(`Stok tidak mencukupi! Maksimal bisa ${sisa}`, 'error', 4000);
-                newQty = sisa; // clamp
-                if (newQty < 1) newQty = 1;
+                newQty = Math.max(1, sisa);
             }
 
             item.qty = newQty;
@@ -945,24 +951,29 @@ if (isset($_GET['action'])) {
             simpanKeranjangKePenyimpanan();
         }
 
-
-        // Mengubah kuantitas manual
+        // === GANTI dengan satu-satunya definisi ini (hapus duplikat yang lain) ===
         function ubahQtyManual(index, value) {
-            const newQty = parseInt(value);
+            const item = keranjang[index];
+            if (!item) return;
 
-            if (isNaN(newQty) || newQty < 1) {
-                keranjang[index].qty = 1;
-            } else if (newQty > keranjang[index].stok) {
-                // alert('Stok tidak mencukupi!');
-                window.showToast('Stok tidak mencukupi!', 'error', 4000);
-                keranjang[index].qty = keranjang[index].stok;
-            } else {
-                keranjang[index].qty = newQty;
+            const stok = Number(item.stok || 0);
+            const otherQty = qtyInCartById(item.id, index);
+            let newQty = parseInt(value, 10);
+
+            if (isNaN(newQty) || newQty < 1) newQty = 1;
+
+            // clamp terhadap stok gabungan
+            if (otherQty + newQty > stok) {
+                const sisa = Math.max(0, stok - otherQty);
+                window.showToast(`Stok tidak mencukupi! Maksimal bisa ${sisa}`, 'error', 4000);
+                newQty = Math.max(1, sisa);
             }
 
+            item.qty = newQty;
             perbaruiKeranjang();
             simpanKeranjangKePenyimpanan();
         }
+
 
         // Menghapus item dari keranjang
         function hapusDariKeranjang(index) {

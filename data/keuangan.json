@@ -1,1 +1,16 @@
-[]
+[
+    {
+        "id": "68dc036f4df0b",
+        "jenis": "pemasukan",
+        "jumlah": 1600,
+        "keterangan": "Penjualan: Tegar (Sebagian, hutang: 1600)",
+        "tanggal": "2025-09-30 23:13:00"
+    },
+    {
+        "id": "68dc036f4df12",
+        "jenis": "pemasukan",
+        "jumlah": 3600,
+        "keterangan": "Penjualan: Janah",
+        "tanggal": "2025-09-30 23:16:18"
+    }
+]
