@@ -3,7 +3,7 @@
         "id": "1758382403",
         "kodeProduk": "TMY344985",
         "nama": "Rinso Box",
-        "stok": 84,
+        "stok": 80,
         "stokMin": 10,
         "satuan": "box",
         "satuanHarga": [
@@ -67,7 +67,7 @@
         "id": 1758442443,
         "kodeProduk": "TMY291385",
         "nama": "Beras",
-        "stok": 40,
+        "stok": 38,
         "stokMin": 5,
         "satuan": "kg",
         "satuanHarga": [
@@ -83,7 +83,7 @@
         "id": "1758442444",
         "kodeProduk": "TMY291386",
         "nama": "Indomie Goreng",
-        "stok": 171,
+        "stok": 164,
         "stokMin": 20,
         "satuan": "pcs",
         "satuanHarga": [
@@ -99,7 +99,7 @@
         "id": "1758442445",
         "kodeProduk": "TMY291387",
         "nama": "Indomie Ayam Bawang",
-        "stok": 20,
+        "stok": 13,
         "stokMin": 20,
         "satuan": "pcs",
         "satuanHarga": [
@@ -163,7 +163,7 @@
         "id": 1758442449,
         "kodeProduk": "TMY291391",
         "nama": "Telur Ayam",
-        "stok": 313,
+        "stok": 312,
         "stokMin": 100,
         "satuan": "bijian",
         "satuanHarga": [

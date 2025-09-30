@@ -37,7 +37,28 @@ if (isset($_GET['action'])) {
             exit;
 
         case 'delete_transaction':
-            $index = $_GET['index'] ?? null;
+            $id    = $_GET['id']    ?? null; // hapus by id (disarankan)
+            $index = $_GET['index'] ?? null; // fallback lama (opsional)
+
+            if ($id !== null) {
+                $found = null;
+                foreach ($penjualan as $i => $t) {
+                    if (strval($t['id'] ?? '') === strval($id)) {
+                        $found = $i;
+                        break;
+                    }
+                }
+                if ($found !== null) {
+                    array_splice($penjualan, $found, 1);
+                    file_put_contents($penjualanFile, json_encode($penjualan, JSON_PRETTY_PRINT));
+                    echo json_encode(['success' => true]);
+                } else {
+                    echo json_encode(['success' => false, 'error' => 'ID transaksi tidak ditemukan']);
+                }
+                exit;
+            }
+
+            // Fallback lama: by index (bila masih dipakai)
             if ($index !== null && isset($penjualan[$index])) {
                 array_splice($penjualan, $index, 1);
                 file_put_contents($penjualanFile, json_encode($penjualan, JSON_PRETTY_PRINT));
@@ -372,7 +393,7 @@ if (isset($_GET['action'])) {
         // Filter transaksi
         function filterTransaksi() {
             const startDate = parseDMY(document.getElementById('filterStart').value);
-            const endDate   = parseDMY(document.getElementById('filterEnd').value);
+            const endDate = parseDMY(document.getElementById('filterEnd').value);
             const nama = document.getElementById('filterNama').value.toLowerCase();
 
             let filteredData = [...currentTransactions];
@@ -393,12 +414,18 @@ if (isset($_GET['action'])) {
 
             if (nama) {
                 filteredData = filteredData.filter(transaksi => {
-                    return transaksi.nama_pembeli.toLowerCase().includes(nama);
+                    const nm = (transaksi.nama_pembeli || '').toString().toLowerCase();
+                    return nm.includes(nama);
                 });
             }
 
             tampilkanHistoryTransaksi(filteredData);
         }
+
+        function findTxById(id) {
+            return currentTransactions.find(t => String(t.id) === String(id));
+        }
+
 
         // Tampilkan history transaksi
         function tampilkanHistoryTransaksi(transaksi) {
@@ -430,13 +457,13 @@ if (isset($_GET['action'])) {
             <td class="p-3 font-medium text-green-600">${laba}</td>
             <td class="p-3">${status}</td>
             <td class="p-3">
-                <button onclick="lihatDetail(${index})" class="text-blue-500 hover:text-blue-700 mr-2">
+                <button onclick="lihatDetailById('${item.id}')" class="text-blue-500 hover:text-blue-700 mr-2">
                     <i class="fas fa-eye"></i> Detail
                 </button>
-                <button onclick="cetakStruk(${index})" class="text-green-500 hover:text-green-700 mr-2">
+                <button onclick="cetakStrukById('${item.id}')" class="text-green-500 hover:text-green-700 mr-2">
                     <i class="fas fa-print"></i> Cetak
                 </button>
-                <button onclick="hapusTransaksi(${index})" class="text-red-500 hover:text-red-700">
+                <button onclick="hapusTransaksiById('${item.id}')" class="text-red-500 hover:text-red-700">
                     <i class="fas fa-trash-alt"></i> Hapus
                 </button>   
             </td>
@@ -493,7 +520,7 @@ if (isset($_GET['action'])) {
         // Confirm bulk delete
         function confirmBulkDelete() {
             const startDate = parseDMY(document.getElementById('bulkDeleteStart').value);
-            const endDate   = parseDMY(document.getElementById('bulkDeleteEnd').value);
+            const endDate = parseDMY(document.getElementById('bulkDeleteEnd').value);
 
             if (!startDate || !endDate) {
                 showToast('Harap pilih tanggal mulai dan tanggal akhir', 'error');
@@ -513,6 +540,27 @@ if (isset($_GET['action'])) {
             document.getElementById('confirmBulkDeleteModal').classList.remove('hidden');
         }
 
+        function hapusTransaksiById(id) {
+            showConfirm(
+                'Apakah Anda yakin ingin menghapus transaksi ini?',
+                () => {
+                    fetch(`history.php?action=delete_transaction&id=${encodeURIComponent(id)}`)
+                        .then(r => r.json())
+                        .then(result => {
+                            if (result.success) {
+                                showToast('Transaksi berhasil dihapus', 'success');
+                                muatHistoryTransaksi(); // reload
+                            } else {
+                                showToast('Gagal menghapus transaksi: ' + (result.error || ''), 'error');
+                            }
+                        })
+                        .catch(() => showToast('Gagal menghapus transaksi', 'error'));
+                },
+                () => {
+                    showToast('Aksi dibatalkan', 'info');
+                }
+            );
+        }
 
         // Cancel bulk delete
         function cancelBulkDelete() {
@@ -554,72 +602,70 @@ if (isset($_GET['action'])) {
 
 
         // Lihat detail transaksi
-        function lihatDetail(index) {
-            index = parseInt(index);
-            const transaksi = currentTransactions[index];
+        function lihatDetailById(id) {
+            const transaksi = findTxById(id);
+            if (!transaksi) return showToast('Transaksi tidak ditemukan', 'error');
 
-            document.getElementById('detailContent').dataset.index = index;
+            const detail = document.getElementById('detailContent');
+            detail.dataset.txId = id; // simpan id untuk cetakStrukDetail()
 
-            // Tampilkan laba jika ada, jika tidak tampilkan 0
-            const totalLaba = transaksi.totalLaba !== undefined ? transaksi.totalLaba : 0;
+            const totalLaba = transaksi.totalLaba ?? 0;
 
             let html = `
-    <div class="mb-4">
-        <h4 class="font-semibold text-lg">Informasi Transaksi</h4>
-        <p><strong>Waktu:</strong> ${formatTanggalIndonesia(transaksi.waktu)}</p>
-        <p><strong>Pembeli:</strong> ${transaksi.nama_pembeli || 'Pelanggan'}</p>
-        <p><strong>Total:</strong> ${formatRupiah(transaksi.total)}</p>
-        <p><strong>Diskon:</strong> ${formatRupiah(transaksi.diskon)}</p>
-        <p><strong>Grand Total:</strong> ${formatRupiah(transaksi.grandTotal)}</p>
-        <p><strong>Bayar:</strong> ${formatRupiah(transaksi.bayar)}</p>
-        <p><strong>Kembalian:</strong> ${formatRupiah(transaksi.kembalian)}</p>
-        <p><strong>Hutang:</strong> ${formatRupiah(transaksi.hutang)}</p>
-        <p><strong>Total Laba:</strong> <span class="text-green-600 font-medium">${formatRupiah(totalLaba)}</span></p>
-    </div>
-    
-    <div>
-        <h4 class="font-semibold text-lg mb-2">Items</h4>
-        <div class="max-h-60 overflow-y-auto border border-gray-200"> <!-- Container untuk sticky table -->
-            <table class="w-full border-collapse">
-                <thead>
-                    <tr class="bg-gray-100 sticky top-0"> <!-- Sticky header -->
-                        <th class="p-2 border">Nama Barang</th>
-                        <th class="p-2 border">Harga</th>
-                        <th class="p-2 border">Jenis Harga</th>
-                        <th class="p-2 border">Qty</th>
-                        <th class="p-2 border">Subtotal</th>
-                        <th class="p-2 border">Laba</th> <!-- Kolom baru untuk Laba per item -->
-                    </tr>
-                </thead>
-                <tbody>
-    `;
+                        <div class="mb-4">
+                        <h4 class="font-semibold text-lg">Informasi Transaksi</h4>
+                        <p><strong>Waktu:</strong> ${formatTanggalIndonesia(transaksi.waktu)}</p>
+                        <p><strong>Pembeli:</strong> ${transaksi.nama_pembeli || 'Pelanggan'}</p>
+                        <p><strong>Total:</strong> ${formatRupiah(transaksi.total)}</p>
+                        <p><strong>Diskon:</strong> ${formatRupiah(transaksi.diskon)}</p>
+                        <p><strong>Grand Total:</strong> ${formatRupiah(transaksi.grandTotal)}</p>
+                        <p><strong>Bayar:</strong> ${formatRupiah(transaksi.bayar)}</p>
+                        <p><strong>Kembalian:</strong> ${formatRupiah(transaksi.kembalian)}</p>
+                        <p><strong>Hutang:</strong> ${formatRupiah(transaksi.hutang)}</p>
+                        <p><strong>Total Laba:</strong> <span class="text-green-600 font-medium">${formatRupiah(totalLaba)}</span></p>
+                        </div>
+                        <div>
+                        <h4 class="font-semibold text-lg mb-2">Items</h4>
+                        <div class="max-h-60 overflow-y-auto border border-gray-200">
+                            <table class="w-full border-collapse">
+                            <thead>
+                                <tr class="bg-gray-100 sticky top-0">
+                                <th class="p-2 border">Nama Barang</th>
+                                <th class="p-2 border">Harga</th>
+                                <th class="p-2 border">Jenis Harga</th>
+                                <th class="p-2 border">Qty</th>
+                                <th class="p-2 border">Subtotal</th>
+                                <th class="p-2 border">Laba</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
 
             transaksi.items.forEach(item => {
-                // Hitung laba per item
-                const labaPerItem = item.laba !== undefined ? item.laba : (item.harga - (item.hargaModal || 0)) * item.qty;
-
+                const labaPerItem = item.laba ?? ((item.harga - (item.hargaModal || 0)) * item.qty);
                 html += `
-        <tr>
-            <td class="p-2 border">${item.nama}</td>
-            <td class="p-2 border">${formatRupiah(item.harga)}</td>
-            <td class="p-2 border">${item.jenisHarga}</td>
-            <td class="p-2 border">${item.qty}</td>
-            <td class="p-2 border">${formatRupiah(item.harga * item.qty)}</td>
-            <td class="p-2 border text-green-600">${formatRupiah(labaPerItem)}</td>
-        </tr>
-        `;
+                        <tr>
+                            <td class="p-2 border">${item.nama}</td>
+                            <td class="p-2 border">${formatRupiah(item.harga)}</td>
+                            <td class="p-2 border">${item.jenisHarga}</td>
+                            <td class="p-2 border">${item.qty}</td>
+                            <td class="p-2 border">${formatRupiah(item.harga * item.qty)}</td>
+                            <td class="p-2 border text-green-600">${formatRupiah(labaPerItem)}</td>
+                        </tr>
+                        `;
             });
 
             html += `
-                </tbody>
-            </table>
-        </div>
-    </div>
-    `;
+                            </tbody>
+                            </table>
+                        </div>
+                        </div>
+                    `;
 
-            document.getElementById('detailContent').innerHTML = html;
+            detail.innerHTML = html;
             document.getElementById('modalDetail').classList.remove('hidden');
         }
+
 
         function tutupModalDetail() {
             document.getElementById('modalDetail').classList.add('hidden');
@@ -722,8 +768,8 @@ if (isset($_GET['action'])) {
 
 
         function cetakStrukDetail() {
-            const index = document.getElementById('detailContent').dataset.index;
-            const transaksi = currentTransactions[index];
+            const id = document.getElementById('detailContent').dataset.txId;
+            const transaksi = findTxById(id);
 
             const formData = new FormData();
             formData.append('tes_printer', '1');
@@ -745,8 +791,9 @@ if (isset($_GET['action'])) {
                 .catch(err => showToast('Terjadi kesalahan saat koneksi ke printer', 'error', 5000));
         }
 
-        function cetakStruk(index) {
-            const transaksi = currentTransactions[index];
+        function cetakStrukById(id) {
+            const transaksi = findTxById(id);
+            if (!transaksi) return showToast('Transaksi tidak ditemukan', 'error');
 
             const formData = new FormData();
             formData.append('tes_printer', '1');
@@ -764,7 +811,7 @@ if (isset($_GET['action'])) {
                         showToast('Gagal mencetak: ' + data.message, 'error', 5000);
                     }
                 })
-                .catch(err => showToast('Terjadi kesalahan saat koneksi ke printer', 'error', 5000));
+                .catch(() => showToast('Terjadi kesalahan saat koneksi ke printer', 'error', 5000));
         }
     </script>
 </body>

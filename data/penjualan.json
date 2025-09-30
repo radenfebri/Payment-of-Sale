@@ -2,785 +2,80 @@
     {
         "items": [
             {
-                "id": "1758382403",
-                "nama": "Rinso Box",
-                "harga": 12000,
-                "jenisHarga": "ecer",
-                "qty": 2,
-                "stok": 119,
-                "hargaModal": 10000,
-                "laba": 4000
-            }
-        ],
-        "total": 24000,
-        "diskon": 0,
-        "grandTotal": 24000,
-        "bayar": 0,
-        "kembalian": 0,
-        "hutang": 24000,
-        "nama_pembeli": "Pelanggan",
-        "id": 1758605133,
-        "waktu": "2025-09-23 12:25:33",
-        "totalLaba": 4000,
-        "recorded_in_keuangan": true
-    },
-    {
-        "items": [
-            {
-                "id": "1758384750",
-                "nama": "Rinso Bijian",
-                "harga": 1500,
-                "jenisHarga": "grosir",
-                "qty": 1,
-                "stok": 57,
-                "hargaModal": 1212,
-                "laba": 288
-            },
-            {
-                "id": "1758384750",
-                "nama": "Rinso Bijian",
-                "harga": 3000,
-                "jenisHarga": "ecer",
-                "qty": 1,
-                "stok": 57,
-                "hargaModal": 1212,
-                "laba": 1788
-            },
-            {
-                "id": "1758382503",
-                "nama": "Rinso Pcs",
-                "harga": 1300,
-                "jenisHarga": "grosir",
-                "qty": 1,
-                "stok": 19,
-                "hargaModal": 1000,
-                "laba": 300
-            },
-            {
-                "id": "1758382503",
-                "nama": "Rinso Pcs",
-                "harga": 1500,
-                "jenisHarga": "ecer",
-                "qty": 1,
-                "stok": 19,
-                "hargaModal": 1000,
-                "laba": 500
-            },
-            {
-                "id": "1758382403",
-                "nama": "Rinso Box",
-                "harga": 11000,
-                "jenisHarga": "grosir",
-                "qty": 1,
-                "stok": 117,
-                "hargaModal": 10000,
-                "laba": 1000
-            },
-            {
-                "id": "1758382403",
-                "nama": "Rinso Box",
-                "harga": 12000,
-                "jenisHarga": "ecer",
-                "qty": 1,
-                "stok": 117,
-                "hargaModal": 10000,
-                "laba": 2000
-            }
-        ],
-        "total": 30300,
-        "diskon": 0,
-        "grandTotal": 30300,
-        "bayar": 0,
-        "kembalian": 0,
-        "hutang": 30300,
-        "nama_pembeli": "Pelanggan",
-        "id": 1758607428,
-        "waktu": "2025-09-23 13:03:48",
-        "totalLaba": 5876,
-        "recorded_in_keuangan": true
-    },
-    {
-        "items": [
-            {
-                "id": "1758382403",
-                "nama": "Rinso Box",
-                "harga": 12000,
-                "jenisHarga": "ecer",
-                "qty": 1,
-                "stok": 115,
-                "hargaModal": 10000,
-                "laba": 2000
-            }
-        ],
-        "total": 12000,
-        "diskon": 0,
-        "grandTotal": 12000,
-        "bayar": 0,
-        "kembalian": 0,
-        "hutang": 12000,
-        "nama_pembeli": "Pelanggan",
-        "id": 1758607780,
-        "waktu": "2025-09-23 13:09:40",
-        "totalLaba": 2000,
-        "recorded_in_keuangan": true
-    },
-    {
-        "items": [
-            {
-                "id": 1758442444,
-                "nama": "Indomie Goreng",
-                "harga": 3000,
-                "jenisHarga": "ecer",
-                "qty": 1,
-                "stok": 184,
-                "hargaModal": 2500,
-                "laba": 500
-            }
-        ],
-        "total": 3000,
-        "diskon": 0,
-        "grandTotal": 3000,
-        "bayar": 0,
-        "kembalian": 0,
-        "hutang": 3000,
-        "nama_pembeli": "Pelanggan",
-        "id": 1758607919,
-        "waktu": "2025-09-23 13:11:59",
-        "totalLaba": 500,
-        "recorded_in_keuangan": true
-    },
-    {
-        "items": [
-            {
-                "id": "1758382403",
-                "nama": "Rinso Box",
-                "harga": 12000,
-                "jenisHarga": "ecer",
-                "qty": 2,
-                "stok": 114,
-                "hargaModal": 10000,
-                "laba": 4000
-            }
-        ],
-        "total": 24000,
-        "diskon": 0,
-        "grandTotal": 24000,
-        "bayar": 0,
-        "kembalian": 0,
-        "hutang": 24000,
-        "nama_pembeli": "Pelanggan",
-        "id": 1758608232,
-        "waktu": "2025-09-23 13:17:12",
-        "totalLaba": 4000,
-        "recorded_in_keuangan": true
-    },
-    {
-        "items": [
-            {
-                "id": "1758382403",
-                "nama": "Rinso Box",
-                "harga": 12000,
-                "jenisHarga": "ecer",
-                "qty": 2,
-                "stok": 112,
-                "hargaModal": 10000,
-                "laba": 4000
-            }
-        ],
-        "total": 24000,
-        "diskon": 0,
-        "grandTotal": 24000,
-        "bayar": 0,
-        "kembalian": 0,
-        "hutang": 24000,
-        "nama_pembeli": "Pelanggan",
-        "id": 1758608322,
-        "waktu": "2025-09-23 13:18:42",
-        "totalLaba": 4000,
-        "recorded_in_keuangan": true
-    },
-    {
-        "items": [
-            {
-                "id": 1758442444,
-                "nama": "Indomie Goreng",
-                "harga": 2800,
-                "jenisHarga": "grosir",
-                "qty": 1,
-                "stok": 183,
-                "hargaModal": 2500,
-                "laba": 300
-            }
-        ],
-        "total": 2800,
-        "diskon": 0,
-        "grandTotal": 2800,
-        "bayar": 0,
-        "kembalian": 0,
-        "hutang": 2800,
-        "nama_pembeli": "Pelanggan",
-        "id": 1758608469,
-        "waktu": "2025-09-23 13:21:09",
-        "totalLaba": 300,
-        "recorded_in_keuangan": true
-    },
-    {
-        "items": [
-            {
-                "id": 1758442444,
-                "nama": "Indomie Goreng",
-                "harga": 3000,
-                "jenisHarga": "ecer",
-                "qty": 1,
-                "stok": 182,
-                "hargaModal": 2500,
-                "laba": 500
-            }
-        ],
-        "total": 3000,
-        "diskon": 0,
-        "grandTotal": 3000,
-        "bayar": 0,
-        "kembalian": 0,
-        "hutang": 3000,
-        "nama_pembeli": "Pelanggan",
-        "id": 1758608699,
-        "waktu": "2025-09-23 13:24:59",
-        "totalLaba": 500,
-        "recorded_in_keuangan": true
-    },
-    {
-        "items": [
-            {
-                "id": 1758442450,
-                "nama": "Minyak Goreng 1L",
-                "harga": 17000,
-                "jenisHarga": "grosir",
-                "qty": 1,
-                "stok": 77,
-                "hargaModal": 15000,
-                "laba": 2000
-            },
-            {
-                "id": 1758442450,
-                "nama": "Minyak Goreng 1L",
-                "harga": 19000,
-                "jenisHarga": "ecer",
-                "qty": 1,
-                "stok": 77,
-                "hargaModal": 15000,
-                "laba": 4000
-            },
-            {
-                "id": 1758442445,
+                "id": "1758442445",
                 "nama": "Indomie Ayam Bawang",
+                "hargaEcer": 3000,
+                "hargaGrosir": 2800,
                 "harga": 2800,
                 "jenisHarga": "grosir",
                 "qty": 1,
-                "stok": 157,
+                "stok": 15,
                 "hargaModal": 2500,
                 "laba": 300
             },
             {
-                "id": 1758442445,
+                "id": "1758442445",
                 "nama": "Indomie Ayam Bawang",
+                "hargaEcer": 3000,
+                "hargaGrosir": 2800,
                 "harga": 3000,
                 "jenisHarga": "ecer",
                 "qty": 1,
-                "stok": 157,
+                "stok": 15,
                 "hargaModal": 2500,
                 "laba": 500
             },
             {
-                "id": 1758442444,
+                "id": "1758442444",
                 "nama": "Indomie Goreng",
+                "hargaEcer": 3000,
+                "hargaGrosir": 2800,
                 "harga": 2800,
                 "jenisHarga": "grosir",
                 "qty": 1,
-                "stok": 182,
+                "stok": 166,
                 "hargaModal": 2500,
                 "laba": 300
             },
             {
-                "id": 1758442444,
+                "id": "1758442444",
                 "nama": "Indomie Goreng",
+                "hargaEcer": 3000,
+                "hargaGrosir": 2800,
                 "harga": 3000,
                 "jenisHarga": "ecer",
                 "qty": 1,
-                "stok": 182,
+                "stok": 166,
                 "hargaModal": 2500,
                 "laba": 500
             }
         ],
-        "total": 47600,
+        "total": 11600,
         "diskon": 0,
-        "grandTotal": 47600,
-        "bayar": 0,
+        "grandTotal": 11600,
+        "bayar": 10000,
         "kembalian": 0,
-        "hutang": 47600,
-        "nama_pembeli": "Pelanggan",
-        "id": 1758608740,
-        "waktu": "2025-09-23 13:25:40",
-        "totalLaba": 7600,
-        "recorded_in_keuangan": true
-    },
-    {
-        "items": [
-            {
-                "id": "1758382403",
-                "nama": "Rinso Box",
-                "harga": 11000,
-                "jenisHarga": "grosir",
-                "qty": 1,
-                "stok": 110,
-                "hargaModal": 10000,
-                "laba": 1000
-            },
-            {
-                "id": "1758382403",
-                "nama": "Rinso Box",
-                "harga": 12000,
-                "jenisHarga": "ecer",
-                "qty": 1,
-                "stok": 110,
-                "hargaModal": 10000,
-                "laba": 2000
-            }
-        ],
-        "total": 23000,
-        "diskon": 0,
-        "grandTotal": 23000,
-        "bayar": 0,
-        "kembalian": 0,
-        "hutang": 23000,
-        "nama_pembeli": "Pelanggan",
-        "id": 1758609431,
-        "waktu": "2025-09-23 13:37:11",
-        "totalLaba": 3000,
-        "recorded_in_keuangan": true
-    },
-    {
-        "items": [
-            {
-                "id": "1758382403",
-                "nama": "Rinso Box",
-                "harga": 11000,
-                "jenisHarga": "grosir",
-                "qty": 1,
-                "stok": 110,
-                "hargaModal": 10000,
-                "laba": 1000
-            },
-            {
-                "id": "1758382403",
-                "nama": "Rinso Box",
-                "harga": 12000,
-                "jenisHarga": "ecer",
-                "qty": 1,
-                "stok": 110,
-                "hargaModal": 10000,
-                "laba": 2000
-            }
-        ],
-        "total": 23000,
-        "diskon": 0,
-        "grandTotal": 23000,
-        "bayar": 0,
-        "kembalian": 0,
-        "hutang": 23000,
-        "nama_pembeli": "Pelanggan",
-        "id": 1758609438,
-        "waktu": "2025-09-23 13:37:18",
-        "totalLaba": 3000,
-        "recorded_in_keuangan": true
-    },
-    {
-        "items": [
-            {
-                "id": "1758382403",
-                "nama": "Rinso Box",
-                "harga": 11000,
-                "jenisHarga": "grosir",
-                "qty": 1,
-                "stok": 110,
-                "hargaModal": 10000,
-                "laba": 1000
-            },
-            {
-                "id": "1758382403",
-                "nama": "Rinso Box",
-                "harga": 12000,
-                "jenisHarga": "ecer",
-                "qty": 1,
-                "stok": 110,
-                "hargaModal": 10000,
-                "laba": 2000
-            }
-        ],
-        "total": 23000,
-        "diskon": 0,
-        "grandTotal": 23000,
-        "bayar": 0,
-        "kembalian": 0,
-        "hutang": 23000,
-        "nama_pembeli": "Pelanggan",
-        "id": 1758609682,
-        "waktu": "2025-09-23 13:41:22",
-        "totalLaba": 3000,
-        "recorded_in_keuangan": true
-    },
-    {
-        "items": [
-            {
-                "id": "1758382403",
-                "nama": "Rinso Box",
-                "harga": 11000,
-                "jenisHarga": "grosir",
-                "qty": 1,
-                "stok": 110,
-                "hargaModal": 10000,
-                "laba": 1000
-            },
-            {
-                "id": "1758382403",
-                "nama": "Rinso Box",
-                "harga": 12000,
-                "jenisHarga": "ecer",
-                "qty": 1,
-                "stok": 110,
-                "hargaModal": 10000,
-                "laba": 2000
-            }
-        ],
-        "total": 23000,
-        "diskon": 0,
-        "grandTotal": 23000,
-        "bayar": 0,
-        "kembalian": 0,
-        "hutang": 23000,
-        "nama_pembeli": "Pelanggan",
-        "id": 1758609687,
-        "waktu": "2025-09-23 13:41:27",
-        "totalLaba": 3000,
-        "recorded_in_keuangan": true
-    },
-    {
-        "items": [
-            {
-                "id": "1758384750",
-                "nama": "Rinso Bijian",
-                "harga": 1500,
-                "jenisHarga": "grosir",
-                "qty": 1,
-                "stok": 55,
-                "hargaModal": 1212,
-                "laba": 288
-            },
-            {
-                "id": "1758384750",
-                "nama": "Rinso Bijian",
-                "harga": 3000,
-                "jenisHarga": "ecer",
-                "qty": 1,
-                "stok": 55,
-                "hargaModal": 1212,
-                "laba": 1788
-            },
-            {
-                "id": "1758382503",
-                "nama": "Rinso Pcs",
-                "harga": 1300,
-                "jenisHarga": "grosir",
-                "qty": 1,
-                "stok": 17,
-                "hargaModal": 1000,
-                "laba": 300
-            },
-            {
-                "id": "1758382503",
-                "nama": "Rinso Pcs",
-                "harga": 1500,
-                "jenisHarga": "ecer",
-                "qty": 1,
-                "stok": 17,
-                "hargaModal": 1000,
-                "laba": 500
-            },
-            {
-                "id": "1758382403",
-                "nama": "Rinso Box",
-                "harga": 11000,
-                "jenisHarga": "grosir",
-                "qty": 1,
-                "stok": 102,
-                "hargaModal": 10000,
-                "laba": 1000
-            },
-            {
-                "id": "1758382403",
-                "nama": "Rinso Box",
-                "harga": 12000,
-                "jenisHarga": "ecer",
-                "qty": 1,
-                "stok": 102,
-                "hargaModal": 10000,
-                "laba": 2000
-            }
-        ],
-        "total": 30300,
-        "diskon": 0,
-        "grandTotal": 30300,
-        "bayar": 0,
-        "kembalian": 0,
-        "hutang": 30300,
-        "nama_pembeli": "Pelanggan",
-        "id": 1758609717,
-        "waktu": "2025-09-23 13:41:57",
-        "totalLaba": 5876,
-        "recorded_in_keuangan": true
-    },
-    {
-        "items": [
-            {
-                "id": "1758384750",
-                "nama": "Rinso Bijian",
-                "harga": 3000,
-                "jenisHarga": "ecer",
-                "qty": 1,
-                "stok": 55,
-                "hargaModal": 1212,
-                "laba": 1788
-            },
-            {
-                "id": "1758382503",
-                "nama": "Rinso Pcs",
-                "harga": 1500,
-                "jenisHarga": "ecer",
-                "qty": 1,
-                "stok": 17,
-                "hargaModal": 1000,
-                "laba": 500
-            },
-            {
-                "id": "1758382403",
-                "nama": "Rinso Box",
-                "harga": 12000,
-                "jenisHarga": "ecer",
-                "qty": 1,
-                "stok": 102,
-                "hargaModal": 10000,
-                "laba": 2000
-            }
-        ],
-        "total": 16500,
-        "diskon": 0,
-        "grandTotal": 16500,
-        "bayar": 16000,
-        "kembalian": 0,
-        "hutang": 500,
-        "nama_pembeli": "Jungkok",
-        "id": 1758609747,
-        "waktu": "2025-09-23 13:42:27",
-        "totalLaba": 4288,
-        "recorded_in_keuangan": true
-    },
-    {
-        "items": [
-            {
-                "id": 1758442443,
-                "nama": "Beras",
-                "harga": 11500,
-                "jenisHarga": "ecer",
-                "qty": 1,
-                "stok": 41,
-                "hargaModal": 9900,
-                "laba": 1600
-            }
-        ],
-        "total": 11500,
-        "diskon": 0,
-        "grandTotal": 11500,
-        "bayar": 0,
-        "kembalian": 0,
-        "hutang": 11500,
-        "nama_pembeli": "Pelanggan",
-        "id": 1758610271,
-        "waktu": "2025-09-23 13:51:11",
+        "hutang": 1600,
+        "nama_pembeli": "Tegar",
+        "id": 1759248789,
+        "waktu": "2025-09-30 23:13:09",
         "totalLaba": 1600,
         "recorded_in_keuangan": true
     },
     {
         "items": [
             {
-                "id": 1758442451,
-                "nama": "Susu Dancow Box",
-                "harga": 40000,
+                "id": 1758442449,
+                "nama": "Telur Ayam",
+                "hargaEcer": 2500,
+                "hargaGrosir": 2200,
+                "harga": 2200,
                 "jenisHarga": "grosir",
                 "qty": 1,
-                "stok": 40,
-                "hargaModal": 35000,
-                "laba": 5000
+                "stok": 313,
+                "hargaModal": 1800,
+                "laba": 400
             },
-            {
-                "id": 1758442451,
-                "nama": "Susu Dancow Box",
-                "harga": 42000,
-                "jenisHarga": "ecer",
-                "qty": 1,
-                "stok": 40,
-                "hargaModal": 35000,
-                "laba": 7000
-            }
-        ],
-        "total": 82000,
-        "diskon": 0,
-        "grandTotal": 82000,
-        "bayar": 0,
-        "kembalian": 0,
-        "hutang": 82000,
-        "nama_pembeli": "Pelanggan",
-        "id": 1758610576,
-        "waktu": "2025-09-23 13:56:16",
-        "totalLaba": 12000,
-        "recorded_in_keuangan": true
-    },
-    {
-        "items": [
-            {
-                "id": 1758442445,
-                "nama": "Indomie Ayam Bawang",
-                "harga": 3000,
-                "jenisHarga": "ecer",
-                "qty": 1,
-                "stok": 155,
-                "hargaModal": 2500,
-                "laba": 500
-            }
-        ],
-        "total": 3000,
-        "diskon": 0,
-        "grandTotal": 3000,
-        "bayar": 5000,
-        "kembalian": 2000,
-        "hutang": 0,
-        "nama_pembeli": "Jungkok",
-        "id": 1758611560,
-        "waktu": "2025-09-23 14:12:40",
-        "totalLaba": 500,
-        "recorded_in_keuangan": true
-    },
-    {
-        "items": [
-            {
-                "id": "1758442453",
-                "nama": "Kopi Kapal Api Sachet",
-                "harga": 1800,
-                "jenisHarga": "grosir",
-                "qty": 1,
-                "stok": 88,
-                "hargaModal": 1500,
-                "laba": 300
-            },
-            {
-                "id": "1758442453",
-                "nama": "Kopi Kapal Api Sachet",
-                "harga": 2000,
-                "jenisHarga": "ecer",
-                "qty": 1,
-                "stok": 88,
-                "hargaModal": 1500,
-                "laba": 500
-            }
-        ],
-        "total": 3800,
-        "diskon": 0,
-        "grandTotal": 3800,
-        "bayar": 5000,
-        "kembalian": 1200,
-        "hutang": 0,
-        "nama_pembeli": "RFK",
-        "id": 1758690192,
-        "waktu": "2025-09-24 12:03:12",
-        "totalLaba": 800,
-        "recorded_in_keuangan": true
-    },
-    {
-        "items": [
-            {
-                "id": 1758442444,
-                "nama": "Indomie Goreng",
-                "harga": 2800,
-                "jenisHarga": "grosir",
-                "qty": 1,
-                "stok": 179,
-                "hargaModal": 2500,
-                "laba": 300
-            },
-            {
-                "id": 1758442450,
-                "nama": "Minyak Goreng 1L",
-                "harga": 17000,
-                "jenisHarga": "grosir",
-                "qty": 1,
-                "stok": 75,
-                "hargaModal": 15000,
-                "laba": 2000
-            },
-            {
-                "id": 1758442450,
-                "nama": "Minyak Goreng 1L",
-                "harga": 19000,
-                "jenisHarga": "ecer",
-                "qty": 1,
-                "stok": 75,
-                "hargaModal": 15000,
-                "laba": 4000
-            },
-            {
-                "id": 1758442445,
-                "nama": "Indomie Ayam Bawang",
-                "harga": 3000,
-                "jenisHarga": "ecer",
-                "qty": 1,
-                "stok": 11,
-                "hargaModal": 2500,
-                "laba": 500
-            },
-            {
-                "id": 1758442445,
-                "nama": "Indomie Ayam Bawang",
-                "harga": 2800,
-                "jenisHarga": "grosir",
-                "qty": 3,
-                "stok": 11,
-                "hargaModal": 2500,
-                "laba": 900
-            },
-            {
-                "id": 1758442444,
-                "nama": "Indomie Goreng",
-                "harga": 3000,
-                "jenisHarga": "ecer",
-                "qty": 7,
-                "stok": 179,
-                "hargaModal": 2500,
-                "laba": 3500
-            }
-        ],
-        "total": 71200,
-        "diskon": 0,
-        "grandTotal": 71200,
-        "bayar": 12000,
-        "kembalian": 0,
-        "hutang": 59200,
-        "nama_pembeli": "Paijok",
-        "id": 1758690552,
-        "waktu": "2025-09-24 12:09:12",
-        "totalLaba": 11200,
-        "recorded_in_keuangan": true
-    },
-    {
-        "items": [
             {
                 "id": 1758442443,
                 "nama": "Beras",
@@ -788,159 +83,22 @@
                 "hargaGrosir": 11000,
                 "harga": 11500,
                 "jenisHarga": "ecer",
-                "qty": 1,
-                "stok": 41,
+                "qty": 2,
+                "stok": 40,
                 "hargaModal": 9900,
-                "laba": 1600
-            },
-            {
-                "id": 1758442452,
-                "nama": "Susu SGM Box",
-                "hargaEcer": 41000,
-                "hargaGrosir": 39000,
-                "harga": 39000,
-                "jenisHarga": "grosir",
-                "qty": 1,
-                "stok": 35,
-                "hargaModal": 34000,
-                "laba": 5000
+                "laba": 3200
             }
         ],
-        "total": 50500,
-        "diskon": 0,
-        "grandTotal": 50500,
-        "bayar": 0,
-        "kembalian": 0,
-        "hutang": 50500,
-        "nama_pembeli": "Pelanggan",
-        "id": 1758860550,
-        "waktu": "2025-09-26 11:22:30",
-        "totalLaba": 6600,
-        "recorded_in_keuangan": true
-    },
-    {
-        "items": [
-            {
-                "id": "1758382403",
-                "nama": "Rinso Box",
-                "hargaEcer": 12000,
-                "hargaGrosir": 11000,
-                "harga": 11000,
-                "jenisHarga": "grosir",
-                "qty": 1,
-                "stok": 88,
-                "hargaModal": 10000,
-                "laba": 1000
-            },
-            {
-                "id": "1758382403",
-                "nama": "Rinso Box",
-                "hargaEcer": 12000,
-                "hargaGrosir": 11000,
-                "harga": 12000,
-                "jenisHarga": "ecer",
-                "qty": 1,
-                "stok": 88,
-                "hargaModal": 10000,
-                "laba": 2000
-            }
-        ],
-        "total": 23000,
-        "diskon": 0,
-        "grandTotal": 23000,
+        "total": 25200,
+        "diskon": 200,
+        "grandTotal": 25000,
         "bayar": 25000,
-        "kembalian": 2000,
-        "hutang": 0,
-        "nama_pembeli": "Pelanggan",
-        "id": 1759247140,
-        "waktu": "2025-09-30 22:45:40",
-        "totalLaba": 3000,
-        "recorded_in_keuangan": true
-    },
-    {
-        "items": [
-            {
-                "id": "1758384750",
-                "nama": "Rinso Bijian",
-                "hargaEcer": 3000,
-                "hargaGrosir": 1500,
-                "harga": 1500,
-                "jenisHarga": "grosir",
-                "qty": 1,
-                "stok": 48,
-                "hargaModal": 1212,
-                "laba": 288
-            },
-            {
-                "id": "1758384750",
-                "nama": "Rinso Bijian",
-                "hargaEcer": 3000,
-                "hargaGrosir": 1500,
-                "harga": 3000,
-                "jenisHarga": "ecer",
-                "qty": 1,
-                "stok": 48,
-                "hargaModal": 1212,
-                "laba": 1788
-            },
-            {
-                "id": "1758382503",
-                "nama": "Rinso Pcs",
-                "hargaEcer": 1500,
-                "hargaGrosir": 1300,
-                "harga": 1300,
-                "jenisHarga": "grosir",
-                "qty": 1,
-                "stok": 8,
-                "hargaModal": 1000,
-                "laba": 300
-            },
-            {
-                "id": "1758382503",
-                "nama": "Rinso Pcs",
-                "hargaEcer": 1500,
-                "hargaGrosir": 1300,
-                "harga": 1500,
-                "jenisHarga": "ecer",
-                "qty": 1,
-                "stok": 8,
-                "hargaModal": 1000,
-                "laba": 500
-            },
-            {
-                "id": "1758382403",
-                "nama": "Rinso Box",
-                "hargaEcer": 12000,
-                "hargaGrosir": 11000,
-                "harga": 11000,
-                "jenisHarga": "grosir",
-                "qty": 1,
-                "stok": 86,
-                "hargaModal": 10000,
-                "laba": 1000
-            },
-            {
-                "id": "1758382403",
-                "nama": "Rinso Box",
-                "hargaEcer": 12000,
-                "hargaGrosir": 11000,
-                "harga": 12000,
-                "jenisHarga": "ecer",
-                "qty": 1,
-                "stok": 86,
-                "hargaModal": 10000,
-                "laba": 2000
-            }
-        ],
-        "total": 30300,
-        "diskon": 0,
-        "grandTotal": 30300,
-        "bayar": 35000,
-        "kembalian": 4700,
+        "kembalian": 0,
         "hutang": 0,
         "nama_pembeli": "Janah",
-        "id": 1759247467,
-        "waktu": "2025-09-30 22:51:07",
-        "totalLaba": 5876
+        "id": 1759248978,
+        "waktu": "2025-09-30 23:16:18",
+        "totalLaba": 3600,
+        "recorded_in_keuangan": true
     }
 ]
