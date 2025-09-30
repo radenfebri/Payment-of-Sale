@@ -3,7 +3,7 @@
         "id": "1758382403",
         "kodeProduk": "TMY344985",
         "nama": "Rinso Box",
-        "stok": 99,
+        "stok": 84,
         "stokMin": 10,
         "satuan": "box",
         "satuanHarga": [
@@ -19,7 +19,7 @@
         "id": "1758382503",
         "kodeProduk": "TMY458579",
         "nama": "Rinso Pcs",
-        "stok": 14,
+        "stok": 6,
         "stokMin": 10,
         "satuan": "pcs",
         "satuanHarga": [
@@ -35,7 +35,7 @@
         "id": "1758384750",
         "kodeProduk": "TMY709458",
         "nama": "Rinso Bijian",
-        "stok": 52,
+        "stok": 46,
         "stokMin": 12,
         "satuan": "bijian",
         "satuanHarga": [
@@ -208,7 +208,7 @@
         ]
     },
     {
-        "id": 1758442452,
+        "id": "1758442452",
         "kodeProduk": "TMY291394",
         "nama": "Susu SGM Box",
         "stok": 34,

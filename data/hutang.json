@@ -85,8 +85,8 @@
         "nama": "Pelanggan",
         "jumlah": 24000,
         "tanggal": "2025-09-23 13:17:12",
-        "status": "belum lunas",
-        "tanggal_bayar": null,
+        "status": "lunas",
+        "tanggal_bayar": "2025-09-30 06:38:14",
         "jumlah_awal": 24000
     },
     {
@@ -229,5 +229,25 @@
         "status": "belum lunas",
         "tanggal_bayar": null,
         "jumlah_awal": 50500
+    },
+    {
+        "id": "H1759246977",
+        "id_penjualan": 1759246977,
+        "nama": "Pelanggan",
+        "jumlah": 25800,
+        "tanggal": "2025-09-30 22:42:57",
+        "status": "belum lunas",
+        "tanggal_bayar": null,
+        "jumlah_awal": 25800
+    },
+    {
+        "id": "H1759246978",
+        "id_penjualan": 1759246978,
+        "nama": "Pelanggan",
+        "jumlah": 25800,
+        "tanggal": "2025-09-30 22:42:58",
+        "status": "belum lunas",
+        "tanggal_bayar": null,
+        "jumlah_awal": 25800
     }
 ]

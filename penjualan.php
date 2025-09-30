@@ -344,14 +344,14 @@ if (isset($_GET['action'])) {
                                 <i class="fas fa-money-bill-wave mr-1"></i> Jumlah Bayar
                             </label>
                             <input type="number" id="bayar" class="border rounded-md p-2 w-full"
-                                placeholder="Jumlah bayar" oninput="hitungKembalian()">
+                                placeholder="Jumlah bayar" data-scan-ignore oninput="hitungKembalian()">
                         </div>
                         <div>
                             <label for="namaPembeli" class="block text-sm font-medium text-gray-700 mb-1">
                                 <i class="fas fa-user mr-1"></i> Nama Pembeli
                             </label>
                             <input type="text" id="namaPembeli" class="border rounded-md p-2 w-full"
-                                placeholder="Masukkan nama pembeli">
+                                placeholder="Masukkan nama pembeli" data-scan-ignore>
                         </div>
                     </div>
 
@@ -491,23 +491,27 @@ if (isset($_GET['action'])) {
 
 
 
-        // Global keydown: deteksi scanner (cepat) & Enter/Tab
+        // Handler global SATU-SATUNYA
         document.addEventListener('keydown', (e) => {
             const inp = document.getElementById('cariBarang');
+            const active = document.activeElement;
+            const editable = isEditable(active);
+            const isSearch = active === inp;
+            const ignoreScan = active?.hasAttribute('data-scan-ignore');
+
+            // Jika modal confirm terbuka atau sedang ngetik di field yang diabaikan → jangan interupsi
+            if (confirmOpen() || ignoreScan) return;
+
             const printable = e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey;
 
-            // Pastikan fokus ke input saat ada inputan
-            if (printable && document.activeElement !== inp) inp.focus();
-
-            // Enter/Tab sering jadi suffix scanner → akhiri scan
+            // Enter/Tab: akhiri scan hanya jika TIDAK sedang edit di field lain
             if (e.key === 'Enter' || e.key === 'Tab') {
-                // Kalau sedang scan (ada buffer), akhiri & auto-add
-                if (scanBuf) {
+                if (scanBuf && !editable) {
                     e.preventDefault();
                     return finishScan(scanBuf);
                 }
-                // Kalau Enter saat fokus di input -> mode manual: tampilkan list saja
-                if (e.key === 'Enter' && document.activeElement === inp) {
+                // Enter di kolom cari → cari manual
+                if (e.key === 'Enter' && isSearch) {
                     e.preventDefault();
                     const q = inp.value.trim();
                     if (q.length >= 2) searchByCodeOrKeyword(q, {
@@ -517,31 +521,35 @@ if (isset($_GET['action'])) {
                 return;
             }
 
-
-            // Kumpulkan karakter cepat untuk deteksi scan tanpa Enter
+            // Karakter biasa
             if (printable) {
+                // Jika lagi mengetik di input lain (bayar/nama/dll) → biarkan saja
+                if (editable && !isSearch) return;
+
+                // Jika bukan sedang edit apa pun → arahkan ke kolom cari
+                if (!editable && document.activeElement !== inp) inp?.focus();
+
+                // Deteksi alur scanner (kecepatan ketikan)
                 const now = performance.now();
                 const gap = now - (scanLastTs || now);
                 scanLastTs = now;
 
                 if (gap <= SCAN.MAX_INTERVAL) {
-                    // masih kecepatan scanner
                     scanBuf += e.key;
-
                     if (scanTimer) clearTimeout(scanTimer);
                     scanTimer = setTimeout(() => {
                         if (scanBuf.length >= SCAN.MIN_LEN) {
-                            finishScan(scanBuf); // anggap scan selesai karena "diam"
+                            finishScan(scanBuf); // auto-add lewat searchByCodeOrKeyword
                         } else {
-                            resetScan(); // terlalu pendek → ketikan biasa
+                            resetScan();
                         }
                     }, SCAN.END_WAIT);
                 } else {
-                    // jeda panjang → ketik manual, reset buffer scan
-                    resetScan();
+                    resetScan(); // jeda panjang → bukan scanner
                 }
             }
         });
+
 
 
         // Fungsi untuk memuat keranjang dari localStorage
@@ -1099,58 +1107,35 @@ if (isset($_GET['action'])) {
                         }
                 );
             } else {
-                await kirimTransaksi();
+                showConfirm(
+                    `Bayar: <b>Rp ${bayar.toLocaleString('id-ID')}</b><br>
+                    Grand Total: <b>Rp ${grandTotal.toLocaleString('id-ID')}</b><br>
+                    Kembalian: <b>Rp ${kembalian.toLocaleString('id-ID')}</b><br><br>
+                    Proses transaksi sekarang?`,
+                    async () => {
+                            await kirimTransaksi();
+                        },
+                        () => {
+                            showToast('Aksi pembayaran dibatalkan', 'info');
+                        }
+                );
             }
         }
 
-        // async function kirimTransaksi() {
-        //     try {
-        //         const response = await fetch('?action=simpan_penjualan', {
-        //             method: 'POST',
-        //             headers: {
-        //                 'Content-Type': 'application/json'
-        //             },
-        //             body: JSON.stringify({
-        //                 items: keranjang,
-        //                 total: total,
-        //                 diskon: diskon,
-        //                 grandTotal: grandTotal,
-        //                 bayar: bayar,
-        //                 kembalian: kembalian >= 0 ? kembalian : 0,
-        //                 hutang: hutang,
-        //                 nama_pembeli: namaPembeli
-        //             })
-        //         });
+        function isEditable(el) {
+            if (!el) return false;
+            const tag = el.tagName;
+            return (
+                tag === 'INPUT' ||
+                tag === 'TEXTAREA' ||
+                tag === 'SELECT' ||
+                el.isContentEditable === true
+            );
+        }
 
-        //         const result = await response.json();
-
-        //         if (result.success) {
-        //             if (result.hutang) {
-        //                 showToast(`Transaksi berhasil! Tercatat hutang sebesar Rp ${hutang.toLocaleString('id-ID')}`, 'warning');
-        //             } else {
-        //                 showToast('Transaksi berhasil!', 'success');
-        //             }
-
-        //             const snapshotKeranjang = JSON.parse(JSON.stringify(keranjang));
-        //             tampilkanStruk(snapshotKeranjang, total, diskon, grandTotal, bayar, kembalian, hutang, namaPembeli);
-
-        //             hapusKeranjangDariPenyimpanan();
-        //             keranjang = [];
-        //             perbaruiKeranjang();
-        //             document.getElementById('bayar').value = '';
-        //             document.getElementById('diskon').value = '0';
-        //             document.getElementById('namaPembeli').value = '';
-        //             document.getElementById('kembalian').value = '';
-        //             document.getElementById('hutangContainer').classList.add('hidden');
-        //         } else {
-        //             showToast('Gagal memproses pembayaran: ' + (result.error || 'Unknown error'), 'error');
-        //         }
-        //     } catch (error) {
-        //         console.error('Error:', error);
-        //         showToast('Terjadi kesalahan: ' + error.message, 'error');
-        //     }
-        // }
-
+        function confirmOpen() {
+            return !!document.querySelector('.confirm-mask');
+        }
 
         // Menampilkan struk
         function tampilkanStruk(items, total, diskon, grandTotal, bayar, kembalian, hutang, namaPembeli) {

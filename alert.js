@@ -1,297 +1,176 @@
-/* =======================
-   Pretty Toast & Confirm
-   (Tailwind + Font Awesome optional)
-   ======================= */
-document.addEventListener("DOMContentLoaded", () => {
-  // --- inject styles (sekali saja) ---
-  if (!document.getElementById("pretty-feedback-style")) {
-    const style = document.createElement("style");
-    style.id = "pretty-feedback-style";
-    style.textContent = `
-/* Toast animations */
-@keyframes toast-in-right { from {opacity:0; transform: translateX(16px) translateY(0) scale(.98);} to {opacity:1; transform: translateX(0) translateY(0) scale(1);} }
-@keyframes toast-in-left  { from {opacity:0; transform: translateX(-16px) translateY(0) scale(.98);} to {opacity:1; transform: translateX(0) translateY(0) scale(1);} }
-@keyframes toast-in-center{ from {opacity:0; transform: translateY(-8px) scale(.98);} to {opacity:1; transform: translateY(0) scale(1);} }
-@keyframes toast-out      { to   {opacity:0; transform: translateY(-8px) scale(.98);} }
+(function () {
+  if (window.__basicAlertLoaded) return;
+  window.__basicAlertLoaded = true;
 
-.toast-enter-right { animation: toast-in-right .25s ease-out; }
-.toast-enter-left  { animation: toast-in-left  .25s ease-out; }
-.toast-enter-center{ animation: toast-in-center.25s ease-out; }
-.toast-exit        { animation: toast-out .2s ease-in forwards; }
+  // --- CSS (warna lebih vivid)
+  const css = `
+#toast-stack{
+  position:fixed; right:16px; top:16px;
+  display:flex; flex-direction:column; gap:8px; z-index:99999; pointer-events:none;
+}
+.toast{
+  pointer-events:auto;
+  min-width:240px; max-width:380px;
+  padding:10px 32px 10px 14px; border-radius:10px;
+  color:#0b1220; background:#f8fafc; border:1px solid #d7dde7;
+  box-shadow:0 6px 24px rgba(0,0,0,.10);
+  font:14px/1.35 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  opacity:0; transform:translateY(-8px); transition:opacity .18s ease, transform .18s ease;
+  position:relative; display:flex; align-items:flex-start; gap:8px;
+}
+.toast.show{opacity:1; transform:translateY(0)}
+.toast .leftbar{position:absolute; left:-1px; top:-1px; bottom:-1px; width:4px; border-radius:10px 0 0 10px;}
+.toast .icon{font-size:16px; line-height:1; margin-top:1px}
+.toast .msg{flex:1}
+.toast .close{
+  position:absolute; right:6px; top:4px; border:0; background:transparent; cursor:pointer;
+  font-size:16px; color:#334155; width:24px; height:24px; display:flex; align-items:center; justify-content:center; border-radius:6px;
+}
+.toast .close:hover{background:rgba(0,0,0,.06)}
 
-/* Modal animations */
-@keyframes modal-in { from {opacity:0;} to {opacity:1;} }
-@keyframes dialog-in { from {opacity:0; transform: translateY(6px) scale(.98);} to {opacity:1; transform: translateY(0) scale(1);} }
-@keyframes dialog-out { to {opacity:0; transform: translateY(6px) scale(.98);} }
+.toast.success{background:#d1fae5; border-color:#34d399}   /* hijau lebih terang */
+.toast.success .leftbar{background:#059669}
+.toast.error  {background:#fee2e2; border-color:#f87171}   /* merah lebih terang */
+.toast.error  .leftbar{background:#dc2626}
+.toast.info   {background:#dbeafe; border-color:#60a5fa}   /* biru lebih terang */
+.toast.info   .leftbar{background:#2563eb}
+.toast.warning{background:#fef3c7; border-color:#fbbf24}   /* kuning lebih terang */
+.toast.warning .leftbar{background:#d97706}
 
-.modal-overlay-enter { animation: modal-in .15s ease-out; }
-.modal-dialog-enter  { animation: dialog-in .2s ease-out; }
-.modal-dialog-exit   { animation: dialog-out .15s ease-in forwards; }
+/* Confirm Modal (center) */
+.confirm-mask{
+  position:fixed; inset:0; background:rgba(0,0,0,.45);
+  display:flex; align-items:center; justify-content:center; z-index:99998;
+}
+.confirm-box{
+  width:92%; max-width:380px; background:#ffffff; border:1px solid #e5e7eb; border-radius:12px;
+  padding:16px; box-shadow:0 18px 48px rgba(0,0,0,.18);
+  font:14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  transform:translateY(-6px); opacity:0; transition:opacity .18s ease, transform .18s ease;
+}
+.confirm-box.show{transform:translateY(0); opacity:1}
+.confirm-box h3{margin:0 0 6px 0; font-size:16px; font-weight:600; color:#0f172a}
+.confirm-box p{margin:0 0 14px 0; color:#374151}
+.confirm-actions{display:flex; gap:8px; justify-content:flex-end}
+.btn{border:1px solid #e5e7eb; border-radius:8px; padding:8px 12px; background:#f9fafb; cursor:pointer; font-weight:500}
+.btn.primary{background:#2563eb; color:#fff; border-color:#2563eb}
+.btn:hover{filter:brightness(1.03)}
 `;
-    document.head.appendChild(style);
-  }
-});
+  const style = document.createElement('style');
+  style.textContent = css;
+  document.head.appendChild(style);
 
-/* =============== Helpers =============== */
-const POSITIONS = {
-  "top-right":   "top-5 right-5",
-  "top-left":    "top-5 left-5",
-  "bottom-right":"bottom-5 right-5",
-  "bottom-left": "bottom-5 left-5",
-  "top-center":  "top-5 left-1/2 -translate-x-1/2",
-  "bottom-center":"bottom-5 left-1/2 -translate-x-1/2",
-};
-function getContainer(position) {
-  const id = `toast-container-${position}`;
-  let el = document.getElementById(id);
-  if (!el) {
-    el = document.createElement("div");
-    el.id = id;
-    el.className = `fixed ${POSITIONS[position]} z-[1100] flex flex-col gap-2 pointer-events-none`;
-    document.body.appendChild(el);
-  }
-  return el;
-}
-function hasFA() {
-  return !!document.querySelector('link[href*="font-awesome"],link[href*="fontawesome"],link[href*="cdnjs.cloudflare.com/ajax/libs/font-awesome"]');
-}
-function iconFor(type) {
-  const fa = hasFA();
-  const map = {
-    success: fa ? '<i class="fa-solid fa-circle-check"></i>' : '✅',
-    error:   fa ? '<i class="fa-solid fa-circle-xmark"></i>' : '❌',
-    info:    fa ? '<i class="fa-solid fa-circle-info"></i>'  : 'ℹ️',
-    warning: fa ? '<i class="fa-solid fa-triangle-exclamation"></i>' : '⚠️',
-    question:fa ? '<i class="fa-solid fa-circle-question"></i>' : '❓',
-  };
-  return map[type] || map.info;
-}
-function colorSet(type) {
-  // warna bg/border/text utk toast & modal
-  switch (type) {
-    case "success": return {bg:"bg-emerald-50 dark:bg-emerald-900/40", ring:"ring-emerald-200 dark:ring-emerald-700/60", text:"text-emerald-900 dark:text-emerald-50", bar:"bg-emerald-500"};
-    case "error":   return {bg:"bg-rose-50 dark:bg-rose-900/40",       ring:"ring-rose-200 dark:ring-rose-700/60",       text:"text-rose-900 dark:text-rose-50",       bar:"bg-rose-500"};
-    case "warning": return {bg:"bg-amber-50 dark:bg-amber-900/40",     ring:"ring-amber-200 dark:ring-amber-700/60",     text:"text-amber-900 dark:text-amber-50",     bar:"bg-amber-500"};
-    case "question":
-    case "info":
-    default:        return {bg:"bg-sky-50 dark:bg-sky-900/40",         ring:"ring-sky-200 dark:ring-sky-700/60",         text:"text-sky-900 dark:text-sky-50",         bar:"bg-sky-500"};
-  }
-}
-
-/* =============== Toast =============== */
-/**
- * showToast(message, typeOrOpts='success', duration=3000)
- * typeOrOpts bisa: 'success'|'error'|'info'|'warning' atau {type,duration,position,title,closable}
- */
-window.showToast = function(message, typeOrOpts = "success", legacyDuration) {
-  const defaults = { type:"success", duration:3000, position:"top-right", title:null, closable:true, max:6 };
-  let opts;
-  if (typeof typeOrOpts === "string") {
-    opts = {...defaults, type:typeOrOpts, duration: legacyDuration ?? defaults.duration};
-  } else {
-    opts = {...defaults, ...(typeOrOpts || {})};
-  }
-  if (!POSITIONS[opts.position]) opts.position = "top-right";
-
-  const container = getContainer(opts.position);
-  const {bg, ring, text, bar} = colorSet(opts.type);
-
-  // limit jumlah toast (buang paling awal)
-  while (container.children.length >= opts.max) {
-    container.firstElementChild?.remove();
-  }
-
-  const wrap = document.createElement("div");
-  wrap.setAttribute("role","status");
-  wrap.setAttribute("aria-live","polite");
-  wrap.className = `pointer-events-auto ${bg} ${text} ring-1 ${ring} shadow-lg rounded-xl px-4 py-3 min-w-[260px] max-w-[360px] backdrop-blur-sm
-                    flex items-start gap-3`;
-  // animasi masuk sesuai posisi
-  const enterClass = opts.position.includes("left") ? "toast-enter-left" :
-                     opts.position.includes("center") ? "toast-enter-center" : "toast-enter-right";
-  wrap.classList.add(enterClass);
-
-  // icon
-  const icon = document.createElement("div");
-  icon.className = "mt-0.5 text-lg shrink-0";
-  icon.innerHTML = iconFor(opts.type);
-
-  // text area
-  const body = document.createElement("div");
-  body.className = "flex-1";
-  const title = opts.title ? `<div class="font-semibold leading-none mb-0.5">${opts.title}</div>` : "";
-  body.innerHTML = `${title}<div class="text-sm leading-snug">${message}</div>`;
-
-  // close
-  const closeBtn = document.createElement("button");
-  closeBtn.type = "button";
-  closeBtn.className = "ms-1 shrink-0 rounded-md px-2 py-1 hover:bg-black/5 dark:hover:bg-white/10 transition";
-  closeBtn.innerHTML = hasFA() ? '<i class="fa-solid fa-xmark"></i>' : '✖';
-  closeBtn.onclick = () => dismiss(true);
-
-  // progress
-  const progress = document.createElement("div");
-  progress.className = `h-1 w-full rounded-b-xl overflow-hidden absolute left-0 right-0 bottom-0`;
-  const barEl = document.createElement("div");
-  barEl.className = `${bar} h-full w-full origin-left`;
-  barEl.style.transform = "scaleX(1)";
-  barEl.style.transition = `transform ${opts.duration}ms linear`;
-  progress.appendChild(barEl);
-
-  // composition
-  const inner = document.createElement("div");
-  inner.className = "relative flex items-start gap-3";
-  inner.appendChild(icon);
-  inner.appendChild(body);
-  if (opts.closable) inner.appendChild(closeBtn);
-  wrap.appendChild(inner);
-  wrap.appendChild(progress);
-
-  // mount
-  container.appendChild(wrap);
-
-  // timer + pause on hover
-  let remaining = opts.duration;
-  let start = Date.now();
-  let ended = false;
-  const startProgress = () => {
-    start = Date.now();
-    requestAnimationFrame(() => { barEl.style.transform = "scaleX(0)"; });
-  };
-  const pause = () => {
-    const elapsed = Date.now() - start;
-    remaining = Math.max(0, remaining - elapsed);
-    barEl.style.transition = "none";
-    const doneRatio = (opts.duration - remaining) / opts.duration;
-    barEl.style.transform = `scaleX(${Math.max(0, 1 - doneRatio)})`;
-    clearTimeout(timer);
-  };
-  const resume = () => {
-    barEl.style.transition = `transform ${remaining}ms linear`;
-    requestAnimationFrame(() => { barEl.style.transform = "scaleX(0)"; });
-    timer = setTimeout(dismiss, remaining);
-    start = Date.now();
-  };
-  wrap.addEventListener("mouseenter", pause);
-  wrap.addEventListener("mouseleave", () => { if (!ended) resume(); });
-
-  function dismiss(immediate = false) {
-    if (ended) return;
-    ended = true;
-    clearTimeout(timer);
-    wrap.classList.remove(enterClass);
-    if (immediate) {
-      wrap.remove();
-      return;
+  // --- toast stack
+  function stack() {
+    let el = document.getElementById('toast-stack');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'toast-stack';
+      document.body.appendChild(el);
     }
-    wrap.classList.add("toast-exit");
-    wrap.addEventListener("animationend", () => wrap.remove());
+    return el;
   }
 
-  // kick
-  startProgress();
-  let timer = setTimeout(dismiss, remaining);
-};
+  // Font Awesome optional
+  function hasFA(){
+    return !!document.querySelector('link[href*="font-awesome"],link[href*="fontawesome"],link[href*="cdnjs.cloudflare.com/ajax/libs/font-awesome"]');
+  }
+  function iconFor(type){
+    const fa = hasFA();
+    const map = {
+      success: fa ? '<i class="fa-solid fa-circle-check"></i>' : '✅',
+      error:   fa ? '<i class="fa-solid fa-circle-xmark"></i>' : '❌',
+      info:    fa ? '<i class="fa-solid fa-circle-info"></i>'  : 'ℹ️',
+      warning: fa ? '<i class="fa-solid fa-triangle-exclamation"></i>' : '⚠️',
+    };
+    return map[type] || map.info;
+  }
 
-/* =============== Confirm Modal =============== */
-/**
- * showConfirm(messageOrOpts, onConfirm?, onCancel?)
- * - Backward compatible: showConfirm("Yakin?", ok, cancel)
- * - Object form:
- *   showConfirm({
- *     title: "Hapus Barang?",
- *     message: "Aksi ini tidak bisa dibatalkan.",
- *     type: "warning"|"error"|"info"|"success"|"question",
- *     confirmText: "Hapus",
- *     cancelText: "Batal",
- *     onConfirm(){}, onCancel(){}
- *   })
- */
-window.showConfirm = function(messageOrOpts, onConfirm, onCancel) {
-  const isObj = typeof messageOrOpts === "object" && messageOrOpts !== null;
-  const opts = isObj ? {
-    title: messageOrOpts.title ?? "Konfirmasi",
-    message: messageOrOpts.message ?? "",
-    type: messageOrOpts.type ?? "question",
-    confirmText: messageOrOpts.confirmText ?? "OK",
-    cancelText: messageOrOpts.cancelText ?? "Batal",
-    onConfirm: messageOrOpts.onConfirm,
-    onCancel: messageOrOpts.onCancel,
-  } : {
-    title: "Konfirmasi",
-    message: String(messageOrOpts ?? ""),
-    type: "question",
-    confirmText: "OK",
-    cancelText: "Batal",
-    onConfirm, onCancel
+  // --- API: showToast (auto-close default 3000ms)
+  window.showToast = function (msg, type = 'info', duration = 3000) {
+    try {
+      const s = stack();
+      while (s.children.length >= 6) s.firstElementChild?.remove();
+
+      const t = document.createElement('div');
+      t.className = `toast ${type}`;
+      t.setAttribute('role','status');
+      t.setAttribute('aria-live','polite');
+      t.innerHTML = `
+        <div class="leftbar"></div>
+        <div class="icon">${iconFor(type)}</div>
+        <div class="msg">${msg}</div>
+      `;
+      s.appendChild(t);
+      requestAnimationFrame(() => t.classList.add('show'));
+
+      // close button (safe-guard)
+      const closeBtn = t.querySelector('.close');
+      if (closeBtn) {
+        closeBtn.onclick = () => {
+          t.classList.remove('show');
+          setTimeout(() => t.remove(), 160);
+        };
+      }
+
+      // auto hide + pause on hover
+      let rem = Math.max(800, duration|0);
+      let start = Date.now();
+      let timer = setTimeout(hide, rem);
+
+      function hide(){
+        t.classList.remove('show');
+        setTimeout(() => t.remove(), 160);
+      }
+      t.addEventListener('mouseenter', () => {
+        clearTimeout(timer);
+        rem -= (Date.now() - start);
+      });
+      t.addEventListener('mouseleave', () => {
+        start = Date.now();
+        timer = setTimeout(hide, Math.max(300, rem));
+      });
+    } catch(e) {
+      console.log('[TOAST]', type, msg);
+    }
   };
 
-  const {bg, ring, text} = colorSet(opts.type);
-  const overlay = document.createElement("div");
-  overlay.className = "fixed inset-0 z-[1200] bg-black/50 backdrop-blur-sm modal-overlay-enter";
+  // --- API: showConfirm (center)
+  window.showConfirm = function (message, onYes, onNo) {
+    try {
+      const mask = document.createElement('div');
+      mask.className = 'confirm-mask';
+      const box = document.createElement('div');
+      box.className = 'confirm-box';
+      box.innerHTML = `
+        <h3>Konfirmasi</h3>
+        <p>${String(message ?? '')}</p>
+        <div class="confirm-actions">
+          <button class="btn" data-act="no">Batal</button>
+          <button class="btn primary" data-act="yes">OK</button>
+        </div>
+      `;
+      mask.appendChild(box);
+      document.body.appendChild(mask);
+      requestAnimationFrame(() => box.classList.add('show'));
 
-  const dialog = document.createElement("div");
-  dialog.className = `mx-auto modal-dialog-enter
-    absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2
-    max-w-sm w-[90%] rounded-2xl ${bg} ${text} ring-1 ${ring} shadow-2xl p-5`;
+      function done(yes){
+        try { box.classList.remove('show'); } catch(e){}
+        setTimeout(() => { try { document.body.removeChild(mask); } catch(e){} }, 160);
+        try { yes ? onYes && onYes() : onNo && onNo(); } catch(e){}
+      }
+      box.querySelector('[data-act="no"]').onclick  = () => done(false);
+      box.querySelector('[data-act="yes"]').onclick = () => done(true);
+      mask.addEventListener('click', (e) => { if (e.target === mask) done(false); });
 
-  const iconWrap = document.createElement("div");
-  iconWrap.className = "text-2xl mb-2";
-  iconWrap.innerHTML = iconFor(opts.type);
-
-  const titleEl = document.createElement("h3");
-  titleEl.className = "text-lg font-semibold";
-  titleEl.textContent = opts.title;
-
-  const msgEl = document.createElement("p");
-  msgEl.className = "mt-1 text-sm opacity-90";
-  msgEl.textContent = opts.message;
-
-  const btns = document.createElement("div");
-  btns.className = "mt-4 flex justify-end gap-2";
-  const cancelBtn = document.createElement("button");
-  cancelBtn.className = "px-4 py-2 rounded-md bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 transition";
-  cancelBtn.textContent = opts.cancelText;
-
-  const confirmBtn = document.createElement("button");
-  const confirmColor = (opts.type === "error" || opts.type === "warning") ? "bg-rose-600 hover:bg-rose-500 text-white"
-                     : (opts.type === "success") ? "bg-emerald-600 hover:bg-emerald-500 text-white"
-                     : "bg-sky-600 hover:bg-sky-500 text-white";
-  confirmBtn.className = `px-4 py-2 rounded-md ${confirmColor} transition`;
-  confirmBtn.textContent = opts.confirmText;
-
-  btns.appendChild(cancelBtn);
-  btns.appendChild(confirmBtn);
-
-  dialog.appendChild(iconWrap);
-  dialog.appendChild(titleEl);
-  dialog.appendChild(msgEl);
-  dialog.appendChild(btns);
-  overlay.appendChild(dialog);
-  document.body.appendChild(overlay);
-
-  // focus trap + keyboard
-  const prevFocus = document.activeElement;
-  confirmBtn.focus();
-
-  function cleanup() {
-    dialog.classList.add("modal-dialog-exit");
-    dialog.addEventListener("animationend", () => overlay.remove());
-    prevFocus && prevFocus.focus?.();
-  }
-  function doCancel() {
-    try { opts.onCancel && opts.onCancel(); } finally { cleanup(); }
-  }
-  function doConfirm() {
-    try { opts.onConfirm && opts.onConfirm(); } finally { cleanup(); }
-  }
-
-  cancelBtn.addEventListener("click", doCancel);
-  confirmBtn.addEventListener("click", doConfirm);
-  overlay.addEventListener("click", (e) => { if (e.target === overlay) doCancel(); });
-  window.addEventListener("keydown", function onKey(e) {
-    if (!document.body.contains(overlay)) return window.removeEventListener("keydown", onKey);
-    if (e.key === "Escape") doCancel();
-    if (e.key === "Enter")  doConfirm();
-  });
-};
+      window.addEventListener('keydown', function esc(e){
+        if (!document.body.contains(mask)) return window.removeEventListener('keydown', esc);
+        if (e.key === 'Escape') done(false);
+        if (e.key === 'Enter')  done(true);
+      });
+    } catch(e) {
+      if (confirm(String(message ?? 'Yakin?'))) { try { onYes && onYes(); } catch(e){} }
+      else { try { onNo && onNo(); } catch(e){} }
+    }
+  };
+})();
