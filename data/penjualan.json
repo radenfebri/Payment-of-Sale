@@ -59,8 +59,7 @@
         "nama_pembeli": "Tegar",
         "id": 1759248789,
         "waktu": "2025-09-30 23:13:09",
-        "totalLaba": 1600,
-        "recorded_in_keuangan": true
+        "totalLaba": 1600
     },
     {
         "items": [
@@ -98,7 +97,6 @@
         "nama_pembeli": "Janah",
         "id": 1759248978,
         "waktu": "2025-09-30 23:16:18",
-        "totalLaba": 3600,
-        "recorded_in_keuangan": true
+        "totalLaba": 3600
     }
 ]
