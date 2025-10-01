@@ -12,5 +12,12 @@
         "jumlah": 3600,
         "keterangan": "Penjualan: Janah",
         "tanggal": "2025-09-30 23:16:18"
+    },
+    {
+        "id": "68dd074919003",
+        "jenis": "pemasukan",
+        "jumlah": 12500,
+        "keterangan": "Penjualan: Pelanggan (Hutang penuh: 92000)",
+        "tanggal": "2025-10-01 17:41:03"
     }
 ]

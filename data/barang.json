@@ -83,7 +83,7 @@
         "id": "1758442444",
         "kodeProduk": "TMY291386",
         "nama": "Indomie Goreng",
-        "stok": 164,
+        "stok": 155,
         "stokMin": 20,
         "satuan": "pcs",
         "satuanHarga": [
@@ -99,7 +99,7 @@
         "id": "1758442445",
         "kodeProduk": "TMY291387",
         "nama": "Indomie Ayam Bawang",
-        "stok": 13,
+        "stok": 7,
         "stokMin": 20,
         "satuan": "pcs",
         "satuanHarga": [
@@ -179,7 +179,7 @@
         "id": 1758442450,
         "kodeProduk": "TMY291392",
         "nama": "Minyak Goreng 1L",
-        "stok": 73,
+        "stok": 71,
         "stokMin": 10,
         "satuan": "liter",
         "satuanHarga": [
@@ -259,7 +259,7 @@
         "id": "1758865682",
         "kodeProduk": "8993319190642",
         "nama": "Tisu Magic",
-        "stok": 1,
+        "stok": 0,
         "stokMin": 1,
         "satuan": "pcs",
         "satuanHarga": [

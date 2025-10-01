@@ -100,5 +100,68 @@
         "waktu": "2025-09-30 23:16:18",
         "totalLaba": 3600,
         "recorded_in_keuangan": true
+    },
+    {
+        "items": [
+            {
+                "id": "1758865682",
+                "nama": "Tisu Magic",
+                "hargaEcer": 15000,
+                "hargaGrosir": 12000,
+                "harga": 12000,
+                "jenisHarga": "grosir",
+                "qty": 1,
+                "stok": 1,
+                "hargaModal": 12000,
+                "laba": 0
+            },
+            {
+                "id": 1758442450,
+                "nama": "Minyak Goreng 1L",
+                "hargaEcer": 19000,
+                "hargaGrosir": 17000,
+                "harga": 19000,
+                "jenisHarga": "ecer",
+                "qty": 2,
+                "stok": 73,
+                "hargaModal": 15000,
+                "laba": 8000
+            },
+            {
+                "id": "1758442445",
+                "nama": "Indomie Ayam Bawang",
+                "hargaEcer": 3000,
+                "hargaGrosir": 2800,
+                "harga": 2800,
+                "jenisHarga": "grosir",
+                "qty": 6,
+                "stok": 13,
+                "hargaModal": 2500,
+                "laba": 1800
+            },
+            {
+                "id": "1758442444",
+                "nama": "Indomie Goreng",
+                "hargaEcer": 3000,
+                "hargaGrosir": 2800,
+                "harga": 2800,
+                "jenisHarga": "grosir",
+                "qty": 9,
+                "stok": 164,
+                "hargaModal": 2500,
+                "laba": 2700
+            }
+        ],
+        "total": 92000,
+        "diskon": 0,
+        "grandTotal": 92000,
+        "bayar": 0,
+        "kembalian": 0,
+        "hutang": 92000,
+        "nama_pembeli": "Pelanggan",
+        "id": 1759315263,
+        "waktu": "2025-10-01 17:41:03",
+        "totalLaba": 12500,
+        "recorded_in_keuangan": true
     }
 ]

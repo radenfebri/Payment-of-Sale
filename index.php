@@ -258,7 +258,9 @@
     // Load data from JSON files
     async function loadData(file) {
       try {
-        const response = await fetch('data/' + file);
+        const response = await fetch('data/' + file, {
+          cache: 'no-store'
+        });
 
         if (!response.ok) {
           console.warn(`File ${file} tidak ditemukan atau error`);
@@ -300,44 +302,21 @@
     function filterDataByDate(data, dateField) {
       if (!dateFilter.startDate && !dateFilter.endDate) return data;
 
-      // Helper ambil tanggal terbaik dari item
-      const getItemDate = (item) => {
-        const fields = Array.isArray(dateField) ? dateField : [dateField];
-        for (const f of fields) {
-          if (!f) continue;
-          const raw = item[f];
-          if (!raw) continue;
+      const startTs = dateFilter.startDate ? startOfDay(new Date(dateFilter.startDate)).getTime() : -Infinity;
+      const endTs = dateFilter.endDate ? endOfDay(new Date(dateFilter.endDate)).getTime() : +Infinity;
 
-          // Parsing aman: dukung "YYYY-MM-DD", "YYYY-MM-DD HH:mm:ss", atau ISO
-          let d;
-          if (typeof raw === 'string') {
-            if (raw.includes('T')) {
-              d = new Date(raw);
-            } else if (raw.includes(' ')) {
-              const [datePart, timePart] = raw.split(' ');
-              const [y, m, dd] = datePart.split('-').map(Number);
-              const [hh = 0, mm = 0, ss = 0] = (timePart || '').split(':').map(Number);
-              d = new Date(y, (m || 1) - 1, dd || 1, hh, mm, ss);
-            } else {
-              const [y, m, dd] = raw.split('-').map(Number);
-              d = new Date(y, (m || 1) - 1, dd || 1);
-            }
-          } else if (raw instanceof Date) {
-            d = raw;
-          }
-
-          if (d && !isNaN(d.getTime())) return d;
-        }
-        return null;
-      };
+      const fields = Array.isArray(dateField) ? dateField : [dateField];
 
       return data.filter(item => {
-        const d = getItemDate(item);
-        if (!d) return false;
-
-        if (dateFilter.startDate && d < dateFilter.startDate) return false;
-        if (dateFilter.endDate && d > dateFilter.endDate) return false;
-        return true;
+        let d = null;
+        for (const f of fields) {
+          if (!f) continue;
+          d = parseDateFlexible(item[f]);
+          if (d && !isNaN(d)) break;
+        }
+        if (!d || isNaN(d)) return false;
+        const ts = d.getTime();
+        return ts >= startTs && ts <= endTs; // INKLUSIF
       });
     }
 
@@ -373,55 +352,66 @@
 
     // Apply date filter
     document.getElementById('applyFilter')?.addEventListener('click', function() {
-      const startDateVal = document.getElementById('startDate').value;
-      const endDateVal = document.getElementById('endDate').value;
+      const s = document.getElementById('startDate').value;
+      const e = document.getElementById('endDate').value;
 
-      dateFilter.startDate = startDateVal ? new Date(startDateVal) : null;
-      dateFilter.endDate = endDateVal ? new Date(endDateVal) : null;
-
-      // Adjust end date to include the entire day
-      if (dateFilter.endDate) {
-        dateFilter.endDate.setHours(23, 59, 59, 999);
-      }
+      dateFilter.startDate = s ? startOfDay(fromYMDLocal(s)) : null;
+      dateFilter.endDate = e ? endOfDay(fromYMDLocal(e)) : null;
 
       renderFilteredData();
     });
 
-    // Reset date filter
     document.getElementById('resetFilter')?.addEventListener('click', function() {
       const end = new Date();
       const start = new Date();
       start.setDate(end.getDate() - 6);
 
-      const toYMD = (d) => d.toISOString().split('T')[0];
+      document.getElementById('startDate').value = toYMDLocal(start);
+      document.getElementById('endDate').value = toYMDLocal(end);
 
-      document.getElementById('startDate').value = toYMD(start);
-      document.getElementById('endDate').value = toYMD(end);
+      dateFilter.startDate = startOfDay(fromYMDLocal(document.getElementById('startDate').value));
+      dateFilter.endDate = endOfDay(fromYMDLocal(document.getElementById('endDate').value));
 
-      dateFilter.startDate = new Date(toYMD(start));
-      dateFilter.endDate = endOfDay(new Date(toYMD(end)));
-
-      // update highlight di flatpickr
       if (window._fpRange) window._fpRange.setDate([start, end], true);
 
       renderFilteredData();
     });
 
 
-    // Set default date values (today)
+    // ===== helper tanggal lokal (ganti toYMD lama) =====
+    function toYMDLocal(d) {
+      const pad = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    }
+
+    function fromYMDLocal(ymd) {
+      const [y, m, d] = ymd.split('-').map(Number);
+      return new Date(y, (m || 1) - 1, d || 1, 0, 0, 0, 0); // lokal
+    }
+
+    function startOfDay(d) {
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+
+    function endOfDay(d) {
+      d.setHours(23, 59, 59, 999);
+      return d;
+    }
+
+    // ===== di setDefaultDates() =====
     function setDefaultDates() {
-      const end = new Date(); // hari ini
-      const start = new Date();
-      start.setDate(end.getDate() - 6); // 7 hari terakhir (termasuk hari ini)
+      const today = new Date();
+      startOfDay(today);
+      const start7 = new Date(today);
+      start7.setDate(today.getDate() - 6);
 
-      const toYMD = (d) => d.toISOString().split('T')[0];
-      document.getElementById('startDate').value = toYMD(start);
-      document.getElementById('endDate').value = toYMD(end);
+      document.getElementById('startDate').value = toYMDLocal(start7);
+      document.getElementById('endDate').value = toYMDLocal(today);
 
-      // sinkronkan ke state filter
-      dateFilter.startDate = new Date(document.getElementById('startDate').value);
-      dateFilter.endDate = new Date(document.getElementById('endDate').value);
-      dateFilter.endDate.setHours(23, 59, 59, 999);
+      // simpan ke state sebagai rentang inklusif
+      dateFilter.startDate = startOfDay(fromYMDLocal(document.getElementById('startDate').value));
+      dateFilter.endDate = endOfDay(fromYMDLocal(document.getElementById('endDate').value));
     }
 
     function endOfDay(d) {
@@ -430,32 +420,26 @@
     }
 
     function initDateRangePicker() {
-      // Inisialisasi Flatpickr di input startDate & hubungkan ke endDate
-      if (window._fpRange) return; // cegah double-init
-
+      if (window._fpRange) return;
       window._fpRange = flatpickr("#startDate", {
         locale: flatpickr.l10ns.id,
         dateFormat: "Y-m-d",
         plugins: [new rangePlugin({
           input: "#endDate"
         })],
-        // pakai default yang sudah di-set oleh setDefaultDates()
         defaultDate: [
           document.getElementById('startDate').value,
           document.getElementById('endDate').value
         ],
         onClose: (selectedDates) => {
-          // ketika user pilih rentang, langsung sync ke state & render
           if (selectedDates.length === 2) {
             const [s, e] = selectedDates;
-            const toYMD = (d) => d.toISOString().split('T')[0];
-
-            document.getElementById('startDate').value = toYMD(s);
-            document.getElementById('endDate').value = toYMD(e);
-
-            dateFilter.startDate = new Date(toYMD(s));
-            dateFilter.endDate = endOfDay(new Date(toYMD(e)));
-
+            const sStr = toYMDLocal(s);
+            const eStr = toYMDLocal(e);
+            document.getElementById('startDate').value = sStr;
+            document.getElementById('endDate').value = eStr;
+            dateFilter.startDate = startOfDay(fromYMDLocal(sStr));
+            dateFilter.endDate = endOfDay(fromYMDLocal(eStr));
             renderFilteredData();
           }
         }
@@ -548,6 +532,24 @@
       document.getElementById("balance").innerText = formatCurrency(saldo);
     }
 
+    function parseDateFlexible(raw) {
+      if (!raw) return null;
+      if (raw instanceof Date) return raw;
+      if (typeof raw === 'string') {
+        if (raw.includes('T')) return new Date(raw); // ISO → biarkan
+        if (raw.includes(' ')) {
+          const [datePart, timePart = ''] = raw.split(' ');
+          const [y, m, d] = datePart.split('-').map(Number);
+          const [hh = 0, mm = 0, ss = 0] = timePart.split(':').map(Number);
+          return new Date(y, (m || 1) - 1, d || 1, hh, mm, ss, 0);
+        }
+        const [y, m, d] = raw.split('-').map(Number);
+        return new Date(y, (m || 1) - 1, d || 1);
+      }
+      return null;
+    }
+
+
     function renderRecentTransactions(transactions) {
       const container = document.getElementById('recentTransactions');
       if (!container) return;
@@ -556,11 +558,9 @@
       const recentTransactions = transactions
         .filter(t => t.waktu)
         .sort((a, b) => {
-          try {
-            return new Date(b.waktu) - new Date(a.waktu);
-          } catch (e) {
-            return 0;
-          }
+          const da = parseDateFlexible(a.waktu);
+          const db = parseDateFlexible(b.waktu);
+          return (db?.getTime() || 0) - (da?.getTime() || 0);
         })
         .slice(0, 5);
 
@@ -599,133 +599,142 @@
     }
 
     function renderCharts(transactions, products) {
-      // Determine date range for sales chart
+      // ====== Tentukan rentang tanggal untuk chart penjualan ======
       let dateRange = [];
       let chartTitle = "Penjualan";
 
-      if (dateFilter.startDate && dateFilter.endDate) {
-        // Custom date range
-        const start = new Date(dateFilter.startDate);
-        const end = new Date(dateFilter.endDate);
-        const diffTime = Math.abs(end - start);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const hasRange = !!(dateFilter.startDate && dateFilter.endDate);
 
-        if (diffDays <= 31) {
-          // Show daily data for up to 31 days
-          for (let i = 0; i <= diffDays; i++) {
-            const date = new Date(start);
-            date.setDate(start.getDate() + i);
-            dateRange.push(new Date(date));
-          }
-          chartTitle = `Penjualan ${getDateRangeText()}`;
-        } else {
-          // Show monthly data for longer ranges
-          const startMonth = start.getMonth();
-          const startYear = start.getFullYear();
-          const endMonth = end.getMonth();
-          const endYear = end.getFullYear();
+      // Normalisasi ke awal/akhir hari (lokal) agar inklusif & stabil
+      let s0 = null,
+        e0 = null;
+      if (hasRange) {
+        s0 = new Date(dateFilter.startDate);
+        e0 = new Date(dateFilter.endDate);
+        startOfDay(s0);
+        endOfDay(e0);
+      }
 
-          let currentYear = startYear;
-          let currentMonth = startMonth;
+      const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-          while (currentYear < endYear || (currentYear === endYear && currentMonth <= endMonth)) {
-            dateRange.push(new Date(currentYear, currentMonth, 1));
-            currentMonth++;
-            if (currentMonth > 11) {
-              currentMonth = 0;
-              currentYear++;
+      const lastDayOfMonth = (d) => new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+      const spanCoversFullMonths = (s, e) => s.getDate() === 1 && e.getDate() === lastDayOfMonth(e);
+      const spansMultipleCalendarMonths = (s, e) =>
+        s.getFullYear() !== e.getFullYear() || s.getMonth() !== e.getMonth();
+
+      let monthlyMode = false;
+
+      if (hasRange) {
+        const diffDays = Math.floor((e0 - s0) / MS_PER_DAY); // inklusif: loop i<=diffDays
+
+        monthlyMode =
+          diffDays > 31 ||
+          spanCoversFullMonths(s0, e0);
+
+        if (monthlyMode) {
+          // Bulanan: titik di tanggal 1 tiap bulan
+          let cy = s0.getFullYear();
+          let cm = s0.getMonth();
+          const ey = e0.getFullYear();
+          const em = e0.getMonth();
+
+          while (cy < ey || (cy === ey && cm <= em)) {
+            dateRange.push(new Date(cy, cm, 1, 0, 0, 0, 0));
+            cm++;
+            if (cm > 11) {
+              cm = 0;
+              cy++;
             }
           }
           chartTitle = `Penjualan Bulanan ${getDateRangeText()}`;
+        } else {
+          // Harian (≤ 31 hari): setiap hari inklusif
+          for (let i = 0; i <= diffDays; i++) {
+            const d = new Date(s0);
+            d.setDate(s0.getDate() + i);
+            startOfDay(d);
+            dateRange.push(d);
+          }
+          chartTitle = `Penjualan ${getDateRangeText()}`;
         }
       } else {
-        // Default: last 7 days
-        dateRange = [...Array(7)].map((_, i) => {
-          const d = new Date();
-          d.setDate(d.getDate() - i);
-          return d;
-        }).reverse();
+        // Default: 7 hari terakhir (harian) — termasuk hari ini
+        const today = new Date();
+        startOfDay(today);
+        const start7 = new Date(today);
+        start7.setDate(today.getDate() - 6);
+        for (let i = 0; i <= 6; i++) {
+          const d = new Date(start7);
+          d.setDate(start7.getDate() + i);
+          startOfDay(d);
+          dateRange.push(d);
+        }
         chartTitle = "Penjualan 7 Hari Terakhir";
+        monthlyMode = false;
       }
 
-      // Update chart title
+      // Update judul chart
       document.getElementById("salesChartTitle").innerText = chartTitle;
 
-      // Prepare sales data
+      // ====== Hitung data penjualan per titik (harian/bulanan) ======
       const salesData = dateRange.map(date => {
-        if (dateRange.length > 31) {
-          // Monthly aggregation
-          const month = date.getMonth();
-          const year = date.getFullYear();
-
+        if (monthlyMode) {
+          const m = date.getMonth();
+          const y = date.getFullYear();
           return transactions
             .filter(t => {
-              try {
-                if (!t.waktu) return false;
-                const saleDate = new Date(t.waktu);
-                return saleDate.getMonth() === month && saleDate.getFullYear() === year;
-              } catch (e) {
-                return false;
-              }
+              if (!t.waktu) return false;
+              const sd = parseDateFlexible(t.waktu);
+              return sd && sd.getMonth() === m && sd.getFullYear() === y;
             })
             .reduce((sum, t) => sum + (parseFloat(t.grandTotal) || 0), 0);
         } else {
-          // Daily aggregation
           const dateFormatted = date.toLocaleDateString('id-ID');
-
           return transactions
             .filter(t => {
-              try {
-                if (!t.waktu) return false;
-                const saleDate = new Date(t.waktu);
-                const saleDateFormatted = saleDate.toLocaleDateString('id-ID');
-                return saleDateFormatted === dateFormatted;
-              } catch (e) {
-                return false;
-              }
+              if (!t.waktu) return false;
+              const sd = parseDateFlexible(t.waktu);
+              if (!sd) return false;
+              return sd.toLocaleDateString('id-ID') === dateFormatted;
             })
             .reduce((sum, t) => sum + (parseFloat(t.grandTotal) || 0), 0);
         }
       });
 
-      // Format labels for display
+      // Label sumbu X
       const labels = dateRange.map(date => {
-        if (dateRange.length > 31) {
-          return date.toLocaleDateString('id-ID', {
+        return monthlyMode ?
+          date.toLocaleDateString('id-ID', {
             month: 'short',
             year: 'numeric'
-          });
-        } else {
-          return date.toLocaleDateString('id-ID', {
+          }) :
+          date.toLocaleDateString('id-ID', {
             day: '2-digit',
             month: 'short'
           });
-        }
       });
 
-      // Create sales chart
+      // ====== Render sales chart (SELALU GARIS) ======
       const salesCtx = document.getElementById('salesChart');
       if (salesCtx) {
         try {
-          // Destroy previous chart if exists
-          if (window.salesChartInstance) {
-            window.salesChartInstance.destroy();
-          }
+          if (window.salesChartInstance) window.salesChartInstance.destroy();
 
-          // Only create chart if we have data
-          if (salesData.some(value => value > 0)) {
+          if (salesData.some(v => v > 0)) {
             window.salesChartInstance = new Chart(salesCtx, {
-              type: dateRange.length > 31 ? 'bar' : 'line',
+              type: 'line', // selalu line
               data: {
-                labels: labels,
+                labels,
                 datasets: [{
                   label: 'Penjualan',
                   data: salesData,
                   borderColor: '#3B82F6',
-                  backgroundColor: dateRange.length > 31 ? '#3B82F6' : 'rgba(59, 130, 246, 0.1)',
+                  backgroundColor: 'rgba(59, 130, 246, 0.1)',
                   tension: 0.3,
-                  fill: dateRange.length > 31 ? true : true,
-                  borderWidth: 2
+                  fill: true,
+                  borderWidth: 2,
+                  pointRadius: 3,
+                  pointHoverRadius: 4
                 }]
               },
               options: {
@@ -737,9 +746,7 @@
                   },
                   tooltip: {
                     callbacks: {
-                      label: function(context) {
-                        return formatCurrency(context.raw);
-                      }
+                      label: (ctx) => formatCurrency(ctx.raw)
                     }
                   }
                 },
@@ -747,12 +754,9 @@
                   y: {
                     beginAtZero: true,
                     ticks: {
-                      callback: function(value) {
-                        if (value >= 1000000) {
-                          return 'Rp' + (value / 1000000).toFixed(1) + 'Jt';
-                        } else if (value >= 1000) {
-                          return 'Rp' + (value / 1000).toFixed(0) + 'Rb';
-                        }
+                      callback: (value) => {
+                        if (value >= 1_000_000) return 'Rp' + (value / 1_000_000).toFixed(1) + 'Jt';
+                        if (value >= 1_000) return 'Rp' + (value / 1_000).toFixed(0) + 'Rb';
                         return 'Rp' + value;
                       },
                       font: {
@@ -771,7 +775,6 @@
               }
             });
           } else {
-            // Show message if no sales data
             const ctx = salesCtx.getContext('2d');
             ctx.clearRect(0, 0, salesCtx.width, salesCtx.height);
             ctx.font = '14px Arial';
@@ -784,7 +787,7 @@
         }
       }
 
-      // Stock chart (top 10 products by stock)
+      // ====== Stock chart: bar seperti semula ======
       const validProducts = products.filter(p => parseInt(p.stok) >= 0);
       const sortedProducts = [...validProducts]
         .sort((a, b) => (parseInt(b.stok) || 0) - (parseInt(a.stok) || 0))
@@ -793,10 +796,7 @@
       const stockCtx = document.getElementById('stockChart');
       if (stockCtx) {
         try {
-          // Destroy previous chart if exists
-          if (window.stockChartInstance) {
-            window.stockChartInstance.destroy();
-          }
+          if (window.stockChartInstance) window.stockChartInstance.destroy();
 
           if (sortedProducts.length > 0) {
             window.stockChartInstance = new Chart(stockCtx, {
@@ -853,6 +853,7 @@
         }
       }
     }
+
 
     // Initialize the dashboard
     document.addEventListener('DOMContentLoaded', function() {
