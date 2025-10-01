@@ -1018,6 +1018,40 @@ if (isset($_GET['action'])) {
             }
         }
 
+        // ===== Random Nama Pelanggan (persist & reset harian) =====
+        const LS_KEY_NUM = 'pos.pelangganCounterNum';
+        const LS_KEY_DATE = 'pos.pelangganCounterDate';
+
+        function nextPelangganName() {
+            try {
+                const tz = 'Asia/Jakarta';
+                const today = new Date().toLocaleDateString('sv-SE', {
+                    timeZone: tz
+                }); // YYYY-MM-DD
+
+                const savedDate = localStorage.getItem(LS_KEY_DATE);
+                let num = parseInt(localStorage.getItem(LS_KEY_NUM) || '1', 10);
+
+                if (savedDate !== today || Number.isNaN(num) || num < 1) {
+                    // reset harian
+                    num = 1;
+                    localStorage.setItem(LS_KEY_DATE, today);
+                }
+
+                const name = `Pelanggan${num}`;
+                localStorage.setItem(LS_KEY_NUM, String(num + 1));
+                return name;
+            } catch {
+                // fallback kalau localStorage tidak tersedia
+                window.__fallbackPelangganNum = (window.__fallbackPelangganNum || 1);
+                return `Pelanggan${window.__fallbackPelangganNum++}`;
+            }
+        }
+
+        // ===== Guard untuk antisipasi double klik =====
+        let __isProcessingPayment = false;
+
+
         // Memproses pembayaran
         async function prosesPembayaran() {
             if (keranjang.length === 0) {
@@ -1026,18 +1060,23 @@ if (isset($_GET['action'])) {
             }
 
             const bayar = parseFloat(document.getElementById('bayar').value) || 0;
-            const namaPembeli = document.getElementById('namaPembeli').value || 'Pelanggan';
+            const inputNama = document.getElementById('namaPembeli');
+            let namaPembeli = inputNama.value.trim();
             const kembalian = bayar - grandTotal;
             const hutang = kembalian < 0 ? Math.abs(kembalian) : 0;
 
-            if (namaPembeli.trim() === '') {
-                showToast('Mohon isi nama pembeli terlebih dahulu!', 'error');
-                document.getElementById('namaPembeli').focus();
-                return;
-            }
-
             // Fungsi internal untuk kirim transaksi
             async function kirimTransaksi() {
+                // --- anti double submit ---
+                if (__isProcessingPayment) return;
+                __isProcessingPayment = true;
+
+                // isi nama default hanya saat benar-benar diproses
+                if (namaPembeli === '') {
+                    namaPembeli = nextPelangganName();
+                    inputNama.value = namaPembeli;
+                }
+
                 try {
                     const response = await fetch('?action=simpan_penjualan', {
                         method: 'POST',
@@ -1086,7 +1125,16 @@ if (isset($_GET['action'])) {
                             })
                         };
 
-                        tampilkanStruk(lastTransaction.items, total, diskon, grandTotal, bayar, kembalian, hutang, namaPembeli);
+                        tampilkanStruk(
+                            lastTransaction.items,
+                            total,
+                            diskon,
+                            grandTotal,
+                            bayar,
+                            kembalian,
+                            hutang,
+                            namaPembeli
+                        );
 
                         // Reset form
                         hapusKeranjangDariPenyimpanan();
@@ -1103,6 +1151,8 @@ if (isset($_GET['action'])) {
                 } catch (error) {
                     console.error('Error:', error);
                     showToast('Terjadi kesalahan: ' + error.message, 'error');
+                } finally {
+                    __isProcessingPayment = false; // lepaskan guard
                 }
             }
 
@@ -1132,6 +1182,7 @@ if (isset($_GET['action'])) {
                 );
             }
         }
+
 
         function isEditable(el) {
             if (!el) return false;
