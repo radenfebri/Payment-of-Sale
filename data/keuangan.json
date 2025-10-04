@@ -33,5 +33,26 @@
         "jumlah": 1000,
         "keterangan": "Penjualan: Pelanggan1 (Hutang penuh: 11000)",
         "tanggal": "2025-10-01 20:05:46"
+    },
+    {
+        "id": "68e0f691a8013",
+        "jenis": "pemasukan",
+        "jumlah": 500,
+        "keterangan": "Penjualan: Pelanggan1 (Hutang penuh: 3000)",
+        "tanggal": "2025-10-01 20:13:30"
+    },
+    {
+        "id": "68e0f691a84ca",
+        "jenis": "pemasukan",
+        "jumlah": 300,
+        "keterangan": "Penjualan: Pelanggan2 (Hutang penuh: 2800)",
+        "tanggal": "2025-10-01 20:13:44"
+    },
+    {
+        "id": "68e0f691a84d2",
+        "jenis": "pemasukan",
+        "jumlah": 2588,
+        "keterangan": "Penjualan: Pelanggan3 (Hutang penuh: 14800)",
+        "tanggal": "2025-10-01 20:14:07"
     }
 ]

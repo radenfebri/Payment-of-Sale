@@ -278,7 +278,8 @@
         "nama_pembeli": "Pelanggan1",
         "id": 1759324410,
         "waktu": "2025-10-01 20:13:30",
-        "totalLaba": 500
+        "totalLaba": 500,
+        "recorded_in_keuangan": true
     },
     {
         "items": [
@@ -304,7 +305,8 @@
         "nama_pembeli": "Pelanggan2",
         "id": 1759324424,
         "waktu": "2025-10-01 20:13:44",
-        "totalLaba": 300
+        "totalLaba": 300,
+        "recorded_in_keuangan": true
     },
     {
         "items": [
@@ -354,6 +356,7 @@
         "nama_pembeli": "Pelanggan3",
         "id": 1759324447,
         "waktu": "2025-10-01 20:14:07",
-        "totalLaba": 2588
+        "totalLaba": 2588,
+        "recorded_in_keuangan": true
     }
 ]

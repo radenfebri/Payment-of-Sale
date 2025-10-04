@@ -76,6 +76,7 @@
         "jumlah": 14800,
         "tanggal": "2025-10-01 20:14:07",
         "status": "belum lunas",
-        "tanggal_bayar": null
+        "tanggal_bayar": null,
+        "jumlah_awal": 14800
     }
 ]

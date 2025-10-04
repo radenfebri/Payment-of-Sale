@@ -467,7 +467,7 @@ if (isset($_GET['action'])) {
     <!-- Sidebar -->
     <?php include "partials/sidebar.php"; ?>
 
-    <main class="flex-1 p-6">
+    <main class="flex-1 md:ml-64 ml-0 p-6">
         <h2 class="text-2xl font-semibold mb-6">💰 Dashboard Keuangan</h2>
 
         <!-- Ringkasan Keuangan -->

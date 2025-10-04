@@ -601,7 +601,7 @@ if (!function_exists('str_ends_with')) {
 <body class="min-h-screen flex">
     <?php include "partials/sidebar.php"; ?>
 
-    <main class="flex-1 p-6">
+    <main class="flex-1 md:ml-64 ml-0 p-6">
         <!-- FULL WIDTH container -->
         <div class="w-full max-w-none mx-auto px-2 sm:px-4">
             <div class="flex items-center gap-3 mb-6">

@@ -1,10 +1,12 @@
-<aside class="w-64 bg-gray-900 text-white flex flex-col">
+<!-- SIDEBAR FIXED -->
+<aside class="fixed left-0 top-0 h-screen w-64 bg-gray-900 text-white flex flex-col z-40">
     <div class="p-4 text-center border-b border-gray-700">
         <h1 class="text-2xl font-bold">POS System</h1>
         <p class="text-sm text-gray-400">Dashboard</p>
     </div>
 
-    <nav class="flex-1 p-4 space-y-2">
+    <!-- penting: biar area menu bisa scroll sendiri -->
+    <nav class="flex-1 min-h-0 p-4 space-y-2 overflow-y-auto">
         <a href="index.php"
             class="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-700 <?= basename($_SERVER['PHP_SELF']) == 'index.php' ? 'bg-gray-700' : '' ?>">
             <i class="fa-solid fa-gauge"></i><span>Dashboard</span>
@@ -51,7 +53,10 @@
         </a>
     </nav>
 
-    <div class="p-4 border-t border-gray-700 text-sm text-gray-400">
-        © 2025 POS App
+    <div class="p-4 border-t border-gray-700 text-sm text-gray-400 text-center">
+        &copy; <span id="year"></span> POS App
     </div>
+    <script>
+        document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
 </aside>

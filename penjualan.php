@@ -268,8 +268,8 @@ if (isset($_GET['action'])) {
     <!-- Sidebar -->
     <?php include "partials/sidebar.php"; ?>
 
-    <main class="flex-1 p-6">
-        <h2 class="text-2xl font-semibold mb-4">🛒 Point of Sale</h2>
+    <main class="flex-1 md:ml-64 ml-0 p-6">
+        <h2 class="text-2xl font-semibold mb-4">🛒 Penjualan</h2>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Panel Kiri: Pencarian dan Daftar Barang -->
@@ -757,46 +757,6 @@ if (isset($_GET['action'])) {
             simpanKeranjangKePenyimpanan();
             window.showToast(`${barang.nama} berhasil ditambahkan ke keranjang.`, 'success', 3000);
         }
-
-
-        // function tambahKeKeranjang(barang, jenisHarga) {
-        //     const hargaEcer = Number(barang?.satuanHarga?.[0]?.hargaEcer || 0);
-        //     const hargaGrosir = Number(barang?.satuanHarga?.[0]?.hargaGrosir || 0);
-
-        //     const jenis = jenisHarga || 'ecer'; // default ecer
-        //     const harga = (jenis === 'grosir') ? hargaGrosir : hargaEcer;
-
-        //     const idx = keranjang.findIndex(i => i.id === barang.id && i.jenisHarga === jenis);
-
-        //     if (idx !== -1) {
-        //         if (keranjang[idx].qty < barang.stok) {
-        //             keranjang[idx].qty += 1;
-        //         } else {
-        //             window.showToast('Stok tidak mencukupi!', 'error', 4000);
-        //             return;
-        //         }
-        //     } else {
-        //         if (barang.stok > 0) {
-        //             keranjang.unshift({
-        //                 id: barang.id,
-        //                 nama: barang.nama,
-        //                 hargaEcer,
-        //                 hargaGrosir,
-        //                 harga, // harga aktif
-        //                 jenisHarga: jenis, // 'ecer' | 'grosir'
-        //                 qty: 1,
-        //                 stok: barang.stok
-        //             });
-        //         } else {
-        //             window.showToast('Stok habis!', 'error', 4000);
-        //             return;
-        //         }
-        //     }
-
-        //     perbaruiKeranjang();
-        //     simpanKeranjangKePenyimpanan();
-        //     window.showToast(`${barang.nama} berhasil ditambahkan ke keranjang.`, 'success', 3000);
-        // }
 
 
         function ubahJenis(index, jenis) {

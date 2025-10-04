@@ -58,11 +58,11 @@
   <?php include "partials/sidebar.php"; ?>
 
   <!-- Main -->
-  <main class="flex-1 p-4 md:p-6">
+  <main class="flex-1 p-4 md:p-6 ml-64">
     <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
       <h2 class="text-2xl md:text-3xl font-bold flex items-center gap-2">
         <i data-lucide="bar-chart-3" class="w-6 h-6 md:w-7 md:h-7 text-blue-600"></i>
-        Ringkasan
+        Dashboard
       </h2>
 
       <!-- Date Filter -->

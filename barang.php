@@ -246,7 +246,7 @@ if (isset($_GET['action'])) {
   <!-- Sidebar -->
   <?php include "partials/sidebar.php"; ?>
 
-  <main class="flex-1 p-6">
+  <main class="flex-1 md:ml-64 ml-0 p-6">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-2xl font-semibold">📦 Manajemen Barang</h2>
 
@@ -280,7 +280,7 @@ if (isset($_GET['action'])) {
 
       <!-- Tabel Barang - Header Fixed -->
       <div class="border border-gray-200 rounded-lg overflow-hidden">
-        <div class="overflow-y-auto max-h-96 relative">
+        <div class="overflow-y-auto max-h-[calc(100vh-16rem)] relative">
           <table class="w-full text-left">
             <thead class="sticky top-0 z-10">
               <tr class="bg-gray-100">
@@ -536,8 +536,8 @@ if (isset($_GET['action'])) {
         <td class="p-3 border">Rp ${parseInt(harga.hargaModal || 0).toLocaleString('id-ID')}</td>
         <td class="p-3 border">Rp ${parseInt(harga.hargaEcer || 0).toLocaleString('id-ID')}</td>
         <td class="p-3 border">Rp ${parseInt(harga.hargaGrosir || 0).toLocaleString('id-ID')}</td>
-        <td class="p-3 border">
-          <div class="flex flex-col sm:flex-row gap-2">
+        <td class="p-3 border text-center">
+          <div class="flex flex-col sm:flex-row gap-2 justify-center">
             <button onclick="editBarang(${b.id})" class="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-400 text-sm flex items-center justify-center">
               <i class="fas fa-edit mr-1"></i> Edit
             </button>

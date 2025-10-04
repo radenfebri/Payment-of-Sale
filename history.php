@@ -188,7 +188,7 @@ if (isset($_GET['action'])) {
     <!-- Sidebar -->
     <?php include "partials/sidebar.php"; ?>
 
-    <main class="flex-1 p-6">
+    <main class="flex-1 md:ml-64 ml-0 p-6">
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-2xl font-semibold">📋 History Transaksi</h2>
         </div>
@@ -261,7 +261,7 @@ if (isset($_GET['action'])) {
                             <th class="p-3">Total</th>
                             <th class="p-3">Laba</th>
                             <th class="p-3">Status</th>
-                            <th class="p-3">Aksi</th>
+                            <th class="p-3 text-center">Aksi</th>
                         </tr>
                     </thead>
                     <tbody id="daftarTransaksi">
@@ -456,7 +456,7 @@ if (isset($_GET['action'])) {
             <td class="p-3 font-medium">${formatRupiah(item.grandTotal)}</td>
             <td class="p-3 font-medium text-green-600">${laba}</td>
             <td class="p-3">${status}</td>
-            <td class="p-3">
+            <td class="p-3 text-center">
                 <button onclick="lihatDetailById('${item.id}')" class="text-blue-500 hover:text-blue-700 mr-2">
                     <i class="fas fa-eye"></i> Detail
                 </button>

@@ -420,7 +420,7 @@ if (isset($_GET['action'])) {
     <?php include "partials/sidebar.php"; ?>
 
     <!-- Main Content -->
-    <main class="flex-1 p-6">
+    <main class="flex-1 md:ml-64 ml-0 p-6">
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-2xl font-bold text-gray-800">📊 Manajemen Stok Barang</h2>
             <!-- Di dalam div dengan class flex justify-between items-center mb-6 -->
