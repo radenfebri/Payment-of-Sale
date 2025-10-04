@@ -4,6 +4,7 @@
 
   // --- CSS (warna lebih vivid)
   const css = `
+  .confirm-body b { font-weight: 700; }
 .confirm-mask{
   position:fixed; inset:0; z-index:99998;
   display:flex; align-items:center; justify-content:center;
@@ -184,7 +185,8 @@
           (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m])
         );
       const title = opts.title ?? "Konfirmasi";
-      const msg = esc(opts.message ?? "");
+      const rawMsg = String(opts.message ?? "");
+      const msg = (isObj && !opts.allowHTML) ? esc(rawMsg) : rawMsg;
       const okText = opts.okText ?? "OK";
       const cancelText = opts.cancelText ?? "Batal";
       const danger = !!opts.danger;

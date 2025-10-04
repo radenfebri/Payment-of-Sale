@@ -217,7 +217,7 @@ if (isset($_GET['action'])) {
     <meta charset="utf-8" />
     <title>Point of Sale - POS</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="alert.js"></script>
+    <script src="alert.js?v=1"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* CSS untuk tabel sticky */
@@ -1119,7 +1119,7 @@ if (isset($_GET['action'])) {
             // Konfirmasi jika bayar kurang
             if (bayar < grandTotal) {
                 showConfirm(
-                    `Pembayaran kurang Rp ${hutang.toLocaleString('id-ID')}. Apakah ingin melanjutkan dengan hutang?`,
+                    `Pembayaran kurang <b>Rp ${hutang.toLocaleString('id-ID')}</b>. Apakah ingin melanjutkan dengan hutang?`,
                     async () => {
                             await kirimTransaksi();
                         },
@@ -1128,18 +1128,22 @@ if (isset($_GET['action'])) {
                         }
                 );
             } else {
-                showConfirm(
-                    `Bayar: <b>Rp ${bayar.toLocaleString('id-ID')}</b><br>
+                showConfirm({
+                    title: "Konfirmasi",
+                    message: `Bayar: <b>Rp ${bayar.toLocaleString('id-ID')}</b><br>
                     Grand Total: <b>Rp ${grandTotal.toLocaleString('id-ID')}</b><br>
                     Kembalian: <b>Rp ${kembalian.toLocaleString('id-ID')}</b><br><br>
                     Proses transaksi sekarang?`,
-                    async () => {
-                            await kirimTransaksi();
-                        },
-                        () => {
-                            showToast('Aksi pembayaran dibatalkan', 'info');
-                        }
-                );
+                    allowHTML: true,
+                    okText: "OK",
+                    cancelText: "Batal",
+                    onYes: async () => {
+                        await kirimTransaksi();
+                    },
+                    onNo: () => {
+                        showToast('Aksi pembayaran dibatalkan', 'info');
+                    }
+                });
             }
         }
 
