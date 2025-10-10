@@ -8,8 +8,9 @@ if (!file_exists($dataDir)) {
     mkdir($dataDir, 0777, true);
 }
 
-$barangFile = $dataDir . "/barang.json";
-$riwayatFile = $dataDir . "/riwayat_stok.json";
+$barangFile   = $dataDir . "/barang.json";
+$riwayatFile  = $dataDir . "/riwayat_stok.json";
+$satuanFile   = $dataDir . "/satuan.json";
 
 // Pastikan file JSON ada
 if (!file_exists($barangFile)) {
@@ -17,6 +18,31 @@ if (!file_exists($barangFile)) {
 }
 if (!file_exists($riwayatFile)) {
     file_put_contents($riwayatFile, "[]");
+}
+if (!file_exists($satuanFile)) {
+    file_put_contents($satuanFile, "[]");
+}
+
+/** Helper: cek satuan variabel (qty desimal) */
+if (!function_exists('isVarUnit')) {
+    function isVarUnit(string $satuanNama, array $satuanList): bool
+    {
+        $key = strtolower(trim($satuanNama));
+        if ($key === '') return false;
+        foreach ($satuanList as $s) {
+            $nm = strtolower(trim((string)($s['nama'] ?? '')));
+            if ($nm === $key) return !empty($s['is_variable']);
+        }
+        return false;
+    }
+}
+/** Helper: normalisasi qty sesuai tipe satuan */
+if (!function_exists('normQty')) {
+    function normQty(float $val, bool $isVar): float
+    {
+        $val = max(0, $val);
+        return $isVar ? round($val, 3) : (float)round($val);
+    }
 }
 
 // Hanya kirim header JSON jika ada parameter action
@@ -26,25 +52,33 @@ if (isset($_GET['action'])) {
     header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
     header('Access-Control-Allow-Headers: Content-Type');
 
-    $barang = json_decode(file_get_contents($barangFile), true) ?? [];
+    $barang  = json_decode(file_get_contents($barangFile), true) ?? [];
+    $satuan  = json_decode(file_get_contents($satuanFile), true) ?? [];
 
     // Handle POST input
     $input = [];
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $input = json_decode(file_get_contents("php://input"), true);
+        $raw = file_get_contents("php://input");
+        $input = json_decode($raw, true);
+        if (!is_array($input)) $input = [];
     }
 
     switch ($_GET['action']) {
         case 'get_barang':
-            echo json_encode($barang);
+            echo json_encode($barang, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+
+            // BARU: expose daftar satuan ke frontend
+        case 'get_satuan':
+            echo json_encode($satuan, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
 
         case 'tambah_stok':
-            $id = $input['id'] ?? '';
-            $jumlah = intval($input['jumlah'] ?? 0);
+            $id         = $input['id'] ?? '';
+            $jumlahRaw  = (float)($input['jumlah'] ?? 0);
             $keterangan = $input['keterangan'] ?? '';
 
-            if (empty($id) || $jumlah <= 0) {
+            if (empty($id) || $jumlahRaw <= 0) {
                 echo json_encode(['success' => false, 'message' => 'Data tidak valid']);
                 exit;
             }
@@ -52,44 +86,53 @@ if (isset($_GET['action'])) {
             $found = false;
             foreach ($barang as &$item) {
                 if ($item['id'] == $id) {
-                    $stokSebelum = $item['stok'];
-                    $item['stok'] += $jumlah;
+                    $isVar       = isVarUnit((string)($item['satuan'] ?? ''), $satuan);
+                    $jumlah      = normQty($jumlahRaw, $isVar);
+                    $stokSebelum = (float)$item['stok'];
+                    $item['stok'] = normQty($stokSebelum + $jumlah, $isVar);
 
                     // Catat riwayat stok
                     $riwayat = file_exists($riwayatFile) ? json_decode(file_get_contents($riwayatFile), true) : [];
+                    if (!is_array($riwayat)) $riwayat = [];
 
                     $riwayat[] = [
-                        'id_barang' => $id,
-                        'kode_produk' => $item['kodeProduk'],
-                        'nama_barang' => $item['nama'],
-                        'jumlah' => $jumlah,
-                        'jenis' => 'penambahan',
-                        'keterangan' => $keterangan,
-                        'waktu' => date('Y-m-d H:i:s'),
-                        'stok_sebelum' => $stokSebelum,
-                        'stok_sesudah' => $item['stok']
+                        'id_barang'     => $id,
+                        'kode_produk'   => $item['kodeProduk'],
+                        'nama_barang'   => $item['nama'],
+                        'jumlah'        => $jumlah,
+                        'jenis'         => 'penambahan',
+                        'keterangan'    => $keterangan,
+                        'waktu'         => date('Y-m-d H:i:s'),
+                        'stok_sebelum'  => $stokSebelum,
+                        'stok_sesudah'  => $item['stok']
                     ];
 
-                    file_put_contents($riwayatFile, json_encode($riwayat, JSON_PRETTY_PRINT));
+                    file_put_contents(
+                        $riwayatFile,
+                        json_encode($riwayat, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+                    );
                     $found = true;
                     break;
                 }
             }
 
             if ($found) {
-                file_put_contents($barangFile, json_encode($barang, JSON_PRETTY_PRINT));
-                echo json_encode(['success' => true, 'data' => $barang]);
+                file_put_contents(
+                    $barangFile,
+                    json_encode($barang, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+                );
+                echo json_encode(['success' => true, 'data' => $barang], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             } else {
                 echo json_encode(['success' => false, 'message' => 'Barang tidak ditemukan']);
             }
             exit;
 
         case 'kurangi_stok':
-            $id = $input['id'] ?? '';
-            $jumlah = intval($input['jumlah'] ?? 0);
+            $id         = $input['id'] ?? '';
+            $jumlahRaw  = (float)($input['jumlah'] ?? 0);
             $keterangan = $input['keterangan'] ?? '';
 
-            if (empty($id) || $jumlah <= 0) {
+            if (empty($id) || $jumlahRaw <= 0) {
                 echo json_encode(['success' => false, 'message' => 'Data tidak valid']);
                 exit;
             }
@@ -97,48 +140,59 @@ if (isset($_GET['action'])) {
             $found = false;
             foreach ($barang as &$item) {
                 if ($item['id'] == $id) {
-                    if ($item['stok'] < $jumlah) {
+                    $isVar       = isVarUnit((string)($item['satuan'] ?? ''), $satuan);
+                    $jumlah      = normQty($jumlahRaw, $isVar);
+                    $stokSebelum = (float)$item['stok'];
+
+                    // Cegah minus (pakai epsilon utk float)
+                    if ($stokSebelum + 1e-9 < $jumlah) {
                         echo json_encode(['success' => false, 'message' => 'Stok tidak mencukupi']);
                         exit;
                     }
 
-                    $stokSebelum = $item['stok'];
-                    $item['stok'] -= $jumlah;
+                    $item['stok'] = normQty($stokSebelum - $jumlah, $isVar);
 
                     // Catat riwayat stok
                     $riwayat = file_exists($riwayatFile) ? json_decode(file_get_contents($riwayatFile), true) : [];
+                    if (!is_array($riwayat)) $riwayat = [];
 
                     $riwayat[] = [
-                        'id_barang' => $id,
-                        'kode_produk' => $item['kodeProduk'],
-                        'nama_barang' => $item['nama'],
-                        'jumlah' => $jumlah,
-                        'jenis' => 'pengurangan',
-                        'keterangan' => $keterangan,
-                        'waktu' => date('Y-m-d H:i:s'),
-                        'stok_sebelum' => $stokSebelum,
-                        'stok_sesudah' => $item['stok']
+                        'id_barang'     => $id,
+                        'kode_produk'   => $item['kodeProduk'],
+                        'nama_barang'   => $item['nama'],
+                        'jumlah'        => $jumlah,
+                        'jenis'         => 'pengurangan',
+                        'keterangan'    => $keterangan,
+                        'waktu'         => date('Y-m-d H:i:s'),
+                        'stok_sebelum'  => $stokSebelum,
+                        'stok_sesudah'  => $item['stok']
                     ];
 
-                    file_put_contents($riwayatFile, json_encode($riwayat, JSON_PRETTY_PRINT));
+                    file_put_contents(
+                        $riwayatFile,
+                        json_encode($riwayat, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+                    );
                     $found = true;
                     break;
                 }
             }
 
             if ($found) {
-                file_put_contents($barangFile, json_encode($barang, JSON_PRETTY_PRINT));
-                echo json_encode(['success' => true, 'data' => $barang]);
+                file_put_contents(
+                    $barangFile,
+                    json_encode($barang, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+                );
+                echo json_encode(['success' => true, 'data' => $barang], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             } else {
                 echo json_encode(['success' => false, 'message' => 'Barang tidak ditemukan']);
             }
             exit;
 
         case 'update_stok':
-            $id = $input['id'] ?? '';
-            $stokBaru = intval($input['stok'] ?? 0);
+            $id          = $input['id'] ?? '';
+            $stokBaruRaw = (float)($input['stok'] ?? 0);
 
-            if (empty($id) || $stokBaru < 0) {
+            if (empty($id) || $stokBaruRaw < 0) {
                 echo json_encode(['success' => false, 'message' => 'Data tidak valid']);
                 exit;
             }
@@ -146,29 +200,36 @@ if (isset($_GET['action'])) {
             $found = false;
             foreach ($barang as &$item) {
                 if ($item['id'] == $id) {
-                    $stokSebelum = $item['stok'];
-                    $perubahan = $stokBaru - $stokSebelum;
+                    $isVar       = isVarUnit((string)($item['satuan'] ?? ''), $satuan);
+                    $stokBaru    = normQty($stokBaruRaw, $isVar);
+
+                    $stokSebelum = (float)$item['stok'];
+                    $perubahan   = $stokBaru - $stokSebelum;
 
                     // Cek kalau ada perubahan stok
-                    if ($perubahan !== 0) {
+                    if (abs($perubahan) > 1e-9) {
                         $item['stok'] = $stokBaru;
 
                         // Catat riwayat stok
                         $riwayat = file_exists($riwayatFile) ? json_decode(file_get_contents($riwayatFile), true) : [];
+                        if (!is_array($riwayat)) $riwayat = [];
 
                         $riwayat[] = [
-                            'id_barang' => $id,
-                            'kode_produk' => $item['kodeProduk'],
-                            'nama_barang' => $item['nama'],
-                            'jumlah' => abs($perubahan),
-                            'jenis' => $perubahan > 0 ? 'penambahan' : 'pengurangan',
-                            'keterangan' => 'Update stok manual',
-                            'waktu' => date('Y-m-d H:i:s'),
-                            'stok_sebelum' => $stokSebelum,
-                            'stok_sesudah' => $stokBaru
+                            'id_barang'     => $id,
+                            'kode_produk'   => $item['kodeProduk'],
+                            'nama_barang'   => $item['nama'],
+                            'jumlah'        => normQty(abs($perubahan), $isVar),
+                            'jenis'         => ($perubahan > 0 ? 'penambahan' : 'pengurangan'),
+                            'keterangan'    => 'Update stok manual',
+                            'waktu'         => date('Y-m-d H:i:s'),
+                            'stok_sebelum'  => $stokSebelum,
+                            'stok_sesudah'  => $stokBaru
                         ];
 
-                        file_put_contents($riwayatFile, json_encode($riwayat, JSON_PRETTY_PRINT));
+                        file_put_contents(
+                            $riwayatFile,
+                            json_encode($riwayat, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+                        );
                     }
 
                     $found = true;
@@ -177,8 +238,11 @@ if (isset($_GET['action'])) {
             }
 
             if ($found) {
-                file_put_contents($barangFile, json_encode($barang, JSON_PRETTY_PRINT));
-                echo json_encode(['success' => true, 'data' => $barang]);
+                file_put_contents(
+                    $barangFile,
+                    json_encode($barang, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+                );
+                echo json_encode(['success' => true, 'data' => $barang], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             } else {
                 echo json_encode(['success' => false, 'message' => 'Barang tidak ditemukan']);
             }
@@ -189,6 +253,7 @@ if (isset($_GET['action'])) {
 
             if (file_exists($riwayatFile)) {
                 $riwayat = json_decode(file_get_contents($riwayatFile), true);
+                if (!is_array($riwayat)) $riwayat = [];
 
                 if (!empty($id)) {
                     $riwayat = array_filter($riwayat, function ($item) use ($id) {
@@ -201,14 +266,15 @@ if (isset($_GET['action'])) {
                     return strtotime($b['waktu']) - strtotime($a['waktu']);
                 });
 
-                echo json_encode(array_values($riwayat));
+                echo json_encode(array_values($riwayat), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             } else {
-                echo json_encode([]);
+                echo json_encode([], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             }
             exit;
 
         case 'hapus_riwayat':
-            $id_barang = $input['id_barang'] ?? null;
+            // Terima kedua nama kunci: id_barang (kanonis) atau barangId (kompat lama)
+            $id_barang = $input['id_barang'] ?? ($input['barangId'] ?? null);
 
             if (file_exists($riwayatFile)) {
                 $riwayat = json_decode(file_get_contents($riwayatFile), true) ?? [];
@@ -225,8 +291,11 @@ if (isset($_GET['action'])) {
                     $message = 'Semua riwayat stok berhasil dihapus';
                 }
 
-                file_put_contents($riwayatFile, json_encode(array_values($riwayat), JSON_PRETTY_PRINT));
-                echo json_encode(['success' => true, 'message' => $message]);
+                file_put_contents(
+                    $riwayatFile,
+                    json_encode(array_values($riwayat), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+                );
+                echo json_encode(['success' => true, 'message' => $message], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             } else {
                 echo json_encode(['success' => false, 'message' => 'File riwayat tidak ditemukan']);
             }
@@ -234,10 +303,11 @@ if (isset($_GET['action'])) {
 
         case 'hapus_riwayat_entry':
             $id_barang = $input['id_barang'] ?? null;
-            $waktu = $input['waktu'] ?? null;
+            $waktu     = $input['waktu'] ?? null;
 
             if (file_exists($riwayatFile)) {
                 $riwayat = json_decode(file_get_contents($riwayatFile), true);
+                if (!is_array($riwayat)) $riwayat = [];
 
                 if ($id_barang && $waktu) {
                     // Hapus hanya entry dengan id_barang + waktu sesuai
@@ -250,8 +320,11 @@ if (isset($_GET['action'])) {
                     exit;
                 }
 
-                file_put_contents($riwayatFile, json_encode(array_values($riwayat), JSON_PRETTY_PRINT));
-                echo json_encode(['success' => true, 'message' => $message]);
+                file_put_contents(
+                    $riwayatFile,
+                    json_encode(array_values($riwayat), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+                );
+                echo json_encode(['success' => true, 'message' => $message], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             } else {
                 echo json_encode(['success' => false, 'message' => 'File riwayat tidak ditemukan']);
             }
@@ -260,7 +333,6 @@ if (isset($_GET['action'])) {
 }
 
 ?>
-
 <!DOCTYPE html>
 <html lang="id">
 
@@ -317,12 +389,12 @@ if (isset($_GET['action'])) {
 
         .modal-overlay {
             background-color: rgba(0, 0, 0, 0.5);
-            transition: opacity 0.3s ease;
+            transition: opacity .3s ease;
         }
 
         .modal-container {
             transform: translateY(-50px);
-            transition: transform 0.3s ease;
+            transition: transform .3s ease;
         }
 
         .modal-open .modal-container {
@@ -331,14 +403,14 @@ if (isset($_GET['action'])) {
 
         .badge {
             display: inline-block;
-            padding: 0.25em 0.6em;
+            padding: .25em .6em;
             font-size: 75%;
             font-weight: 700;
             line-height: 1;
             text-align: center;
             white-space: nowrap;
             vertical-align: baseline;
-            border-radius: 0.375rem;
+            border-radius: .375rem;
         }
 
         .badge-success {
@@ -362,7 +434,7 @@ if (isset($_GET['action'])) {
         }
 
         .fade-in {
-            animation: fadeIn 0.3s ease-in-out;
+            animation: fadeIn .3s ease-in-out;
         }
 
         @keyframes fadeIn {
@@ -376,7 +448,7 @@ if (isset($_GET['action'])) {
         }
 
         .slide-in {
-            animation: slideIn 0.3s ease-out;
+            animation: slideIn .3s ease-out;
         }
 
         @keyframes slideIn {
@@ -391,7 +463,6 @@ if (isset($_GET['action'])) {
             }
         }
 
-        /* PERBAIKAN: Sticky header untuk tabel - DIPERBAIKI */
         .table-container {
             max-height: 70vh;
             overflow-y: auto;
@@ -408,7 +479,6 @@ if (isset($_GET['action'])) {
             padding-bottom: 12px;
         }
 
-        /* Efek hover untuk baris tabel */
         .hover-row:hover {
             background-color: #f3f4f6 !important;
         }
@@ -423,18 +493,13 @@ if (isset($_GET['action'])) {
     <main class="flex-1 md:ml-64 ml-0 p-6">
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-2xl font-bold text-gray-800">📊 Manajemen Stok Barang</h2>
-            <!-- Di dalam div dengan class flex justify-between items-center mb-6 -->
             <div class="flex space-x-2">
-                <!-- Tombol yang sudah ada -->
                 <button onclick="openPrintModal()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center">
                     <i class="fas fa-file-export mr-2"></i> Print Stok Barang
                 </button>
-
-                <!-- Tombol Hapus Riwayat -->
                 <button onclick="hapusSemuaRiwayat()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center">
                     <i class="fas fa-trash-alt mr-2"></i> Hapus Riwayat
                 </button>
-
                 <button onclick="openTambahStokModal()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center">
                     <i class="fas fa-plus mr-2"></i> Tambah Stok
                 </button>
@@ -476,24 +541,22 @@ if (isset($_GET['action'])) {
         <!-- Loading Indicator -->
         <div id="loadingIndicator" class="loading-spinner"></div>
 
-        <!-- Stok Table - DIPERBAIKI dengan container untuk sticky header -->
+        <!-- Stok Table -->
         <div id="stokTableContainer" class="bg-white rounded-lg shadow overflow-hidden hidden">
-            <div class="table-container"> <!-- Container dengan max-height dan overflow -->
+            <div class="table-container">
                 <table class="w-full text-left border border-gray-300 sticky-header">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode Barang</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Barang</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stok Saat Ini</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stok Minimum</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Satuan</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode Barang</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Barang</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stok Saat Ini</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stok Minimum</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Satuan</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                         </tr>
                     </thead>
-                    <tbody id="stokTableBody" class="bg-white divide-y divide-gray-200">
-                        <!-- Data akan diisi oleh JavaScript -->
-                    </tbody>
+                    <tbody id="stokTableBody" class="bg-white divide-y divide-gray-200"></tbody>
                 </table>
             </div>
         </div>
@@ -518,15 +581,16 @@ if (isset($_GET['action'])) {
                     </label>
                     <select id="barangSelectTambah" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
                         <option value="">-- Pilih Barang --</option>
-                        <!-- Options akan diisi oleh JavaScript -->
                     </select>
                 </div>
-                <div class="mb-4">
+                <div class="mb-1">
                     <label class="block text-gray-700 text-sm font-bold mb-2" for="jumlahStokTambah">
                         Jumlah Stok yang Ditambahkan
                     </label>
-                    <input type="number" id="jumlahStokTambah" min="1" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                    <!-- step dinamis -->
+                    <input type="number" id="jumlahStokTambah" min="0" step="any" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
                 </div>
+                <p id="hintTambah" class="text-xs text-gray-500 mb-4"></p>
                 <div class="mb-4">
                     <label class="block text-gray-700 text-sm font-bold mb-2" for="keteranganTambah">
                         Keterangan (Opsional)
@@ -535,12 +599,8 @@ if (isset($_GET['action'])) {
                 </div>
             </div>
             <div class="px-6 py-4 border-t flex justify-end">
-                <button onclick="closeTambahStokModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded mr-2">
-                    Batal
-                </button>
-                <button onclick="tambahStok()" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">
-                    Simpan
-                </button>
+                <button onclick="closeTambahStokModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded mr-2">Batal</button>
+                <button onclick="tambahStok()" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">Simpan</button>
             </div>
         </div>
     </div>
@@ -558,15 +618,16 @@ if (isset($_GET['action'])) {
                     </label>
                     <select id="barangSelectKurangi" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
                         <option value="">-- Pilih Barang --</option>
-                        <!-- Options akan diisi oleh JavaScript -->
                     </select>
                 </div>
-                <div class="mb-4">
+                <div class="mb-1">
                     <label class="block text-gray-700 text-sm font-bold mb-2" for="jumlahStokKurangi">
                         Jumlah Stok yang Dikurangi
                     </label>
-                    <input type="number" id="jumlahStokKurangi" min="1" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                    <!-- step dinamis -->
+                    <input type="number" id="jumlahStokKurangi" min="0" step="any" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
                 </div>
+                <p id="hintKurangi" class="text-xs text-gray-500 mb-4"></p>
                 <div class="mb-4">
                     <label class="block text-gray-700 text-sm font-bold mb-2" for="keteranganKurangi">
                         Keterangan (Opsional)
@@ -575,12 +636,8 @@ if (isset($_GET['action'])) {
                 </div>
             </div>
             <div class="px-6 py-4 border-t flex justify-end">
-                <button onclick="closeKurangiStokModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded mr-2">
-                    Batal
-                </button>
-                <button onclick="kurangiStok()" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded">
-                    Simpan
-                </button>
+                <button onclick="closeKurangiStokModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded mr-2">Batal</button>
+                <button onclick="kurangiStok()" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded">Simpan</button>
             </div>
         </div>
     </div>
@@ -593,33 +650,25 @@ if (isset($_GET['action'])) {
             </div>
             <div class="px-6 py-4">
                 <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2">
-                        Nama Barang
-                    </label>
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Nama Barang</label>
                     <p id="editNamaBarang" class="text-lg font-medium"></p>
                 </div>
                 <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2">
-                        Kode Barang
-                    </label>
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Kode Barang</label>
                     <p id="editKodeBarang" class="text-lg font-medium"></p>
                 </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="stokBaru">
-                        Stok Baru
-                    </label>
-                    <input type="number" id="stokBaru" min="0" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                <div class="mb-1">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="stokBaru">Stok Baru</label>
+                    <!-- step dinamis -->
+                    <input type="number" id="stokBaru" min="0" step="any" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
                 </div>
+                <p id="hintEdit" class="text-xs text-gray-500 mb-4"></p>
                 <input type="hidden" id="editBarangId">
                 <input type="hidden" id="stokLama">
             </div>
             <div class="px-6 py-4 border-t flex justify-end">
-                <button onclick="closeEditStokModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded mr-2">
-                    Batal
-                </button>
-                <button onclick="updateStok()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
-                    Simpan Perubahan
-                </button>
+                <button onclick="closeEditStokModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded mr-2">Batal</button>
+                <button onclick="updateStok()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">Simpan Perubahan</button>
             </div>
         </div>
     </div>
@@ -628,8 +677,6 @@ if (isset($_GET['action'])) {
     <div id="modalRiwayat" class="fixed inset-0 z-50 flex items-center justify-center hidden modal-overlay bg-black bg-opacity-50 transition-opacity duration-300">
         <div class="modal-container bg-white w-11/12 md:max-w-5xl mx-auto rounded-2xl shadow-2xl z-50 overflow-y-auto max-h-screen transform transition-all duration-300 scale-95">
             <div class="p-6">
-
-                <!-- Header -->
                 <div class="flex justify-between items-center mb-6 border-b pb-4">
                     <div>
                         <h3 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
@@ -645,7 +692,6 @@ if (isset($_GET['action'])) {
                     </div>
                 </div>
 
-                <!-- Tabel Riwayat -->
                 <div class="overflow-x-auto rounded-lg shadow">
                     <table class="min-w-full divide-y divide-gray-200 text-sm">
                         <thead class="bg-blue-50">
@@ -659,13 +705,10 @@ if (isset($_GET['action'])) {
                                 <th class="px-6 py-3 text-left font-semibold text-gray-700 uppercase tracking-wider">Aksi</th>
                             </tr>
                         </thead>
-                        <tbody id="riwayatTableBody" class="bg-white divide-y divide-gray-100">
-                            <!-- Data riwayat akan diisi oleh JavaScript -->
-                        </tbody>
+                        <tbody id="riwayatTableBody" class="bg-white divide-y divide-gray-100"></tbody>
                     </table>
                 </div>
 
-                <!-- Empty State -->
                 <div id="riwayatEmptyState" class="hidden text-center py-10">
                     <i class="fas fa-history text-5xl text-gray-300 mb-4 animate-pulse"></i>
                     <p class="text-gray-500 font-medium">Tidak ada riwayat stok untuk barang ini</p>
@@ -686,88 +729,103 @@ if (isset($_GET['action'])) {
                 <input type="hidden" id="hapusRiwayatBarangId">
             </div>
             <div class="px-6 py-4 border-t flex justify-end">
-                <button onclick="closeHapusRiwayatModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded mr-2">
-                    Batal
-                </button>
-                <button onclick="hapusRiwayat()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">
-                    Hapus
-                </button>
+                <button onclick="closeHapusRiwayatModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded mr-2">Batal</button>
+                <button onclick="hapusRiwayat()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">Hapus</button>
             </div>
         </div>
     </div>
 
     <div id="printData" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
         <div class="bg-white rounded-2xl shadow-xl w-96 p-6 transform transition-all scale-95 opacity-0 animate-[fadeIn_0.25s_ease-out_forwards]">
-            <!-- Header -->
-            <h2 class="text-xl font-bold text-gray-800 text-center mb-5">
-                🖨️ Pilih Jenis Cetak
-            </h2>
-
-            <!-- Buttons -->
+            <h2 class="text-xl font-bold text-gray-800 text-center mb-5">🖨️ Pilih Jenis Cetak</h2>
             <div class="space-y-3">
-                <button onclick="printData('semua')"
-                    class="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium shadow">
-                    📄 Cetak Semua Produk
-                </button>
-
-                <button onclick="printData('habis')"
-                    class="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg font-medium shadow">
-                    🛒 Cetak Produk Habis / Hampir Habis
-                </button>
+                <button onclick="printData('semua')" class="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium shadow">📄 Cetak Semua Produk</button>
+                <button onclick="printData('habis')" class="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg font-medium shadow">🛒 Cetak Produk Habis / Hampir Habis</button>
             </div>
-
-            <!-- Cancel -->
-            <button onclick="closePrintModal()"
-                class="mt-5 w-full bg-gray-300 hover:bg-gray-400 text-gray-800 py-2.5 rounded-lg font-medium transition">
-                Batal
-            </button>
+            <button onclick="closePrintModal()" class="mt-5 w-full bg-gray-300 hover:bg-gray-400 text-gray-800 py-2.5 rounded-lg font-medium transition">Batal</button>
         </div>
     </div>
 
-
     <script>
-        // Variabel global untuk menyimpan data barang
+        // Variabel global
         let barangData = [];
+        let satuanList = [];
         let currentRiwayatBarangId = null;
         let currentRiwayatNama = null;
         let currentRiwayatKode = null;
         let currentRiwayatStok = null;
 
-        // Fungsi untuk memuat data dari server
+        // ---- Helper satuan (frontend) ----
+        function isVarSatuanName(nama) {
+            const key = String(nama || '').trim().toLowerCase();
+            if (!key) return false;
+            return !!(satuanList.find(s => String(s.nama || '').trim().toLowerCase() === key && !!s.is_variable));
+        }
+
+        function setStepHint(elInput, elHint, isVar) {
+            if (!elInput) return;
+            elInput.step = isVar ? 'any' : '1';
+            if (elHint) {
+                elHint.textContent = isVar ?
+                    'Satuan ini mendukung desimal (contoh: 0.25, 1.5).' :
+                    'Satuan ini tidak mendukung desimal. Masukkan bilangan bulat.';
+            }
+        }
+
+        function applyStepForBarang(barangId, inputId, hintId) {
+            const b = barangData.find(x => String(x.id) === String(barangId));
+            const isVar = b ? isVarSatuanName(b.satuan) : false;
+            setStepHint(document.getElementById(inputId), document.getElementById(hintId), isVar);
+        }
+
+        function applyStepForSelect(selectId, inputId, hintId) {
+            const sel = document.getElementById(selectId);
+            const val = sel ? sel.value : '';
+            if (!val) {
+                setStepHint(document.getElementById(inputId), document.getElementById(hintId), false);
+                return;
+            }
+            applyStepForBarang(val, inputId, hintId);
+        }
+
+        // ---- Loaders ----
         async function loadBarangData() {
-            // Tampilkan loading indicator
             document.getElementById('loadingIndicator').classList.remove('hidden');
             document.getElementById('stokTableContainer').classList.add('hidden');
             document.getElementById('errorMessage').classList.add('hidden');
 
             try {
                 const response = await fetch('stok.php?action=get_barang');
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
                 const data = await response.json();
-                barangData = data;
+                barangData = Array.isArray(data) ? data : [];
 
-                // Render tabel dengan data yang diperoleh
                 renderBarangTable(barangData);
 
-                // Sembunyikan loading indicator, tampilkan tabel
                 document.getElementById('loadingIndicator').classList.add('hidden');
                 document.getElementById('stokTableContainer').classList.remove('hidden');
 
             } catch (error) {
                 console.error('Error loading barang data:', error);
-
-                // Tampilkan pesan error
                 document.getElementById('loadingIndicator').classList.add('hidden');
                 document.getElementById('errorText').textContent = `Gagal memuat data: ${error.message}`;
                 document.getElementById('errorMessage').classList.remove('hidden');
             }
         }
+        async function loadSatuan() {
+            try {
+                const res = await fetch('stok.php?action=get_satuan');
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                satuanList = Array.isArray(data) ? data : [];
+            } catch (e) {
+                console.warn('Gagal memuat satuan, default ke non-variabel:', e);
+                satuanList = [];
+            }
+        }
 
-        // Fungsi untuk menentukan status stok
+        // ---- Status stok ----
         function getStatusStok(stok, stokMin) {
             if (stok === 0) {
                 return {
@@ -787,35 +845,27 @@ if (isset($_GET['action'])) {
             }
         }
 
-        // Fungsi untuk menentukan class baris berdasarkan status stok
         function getRowClass(stok, stokMin) {
-            if (stok === 0) {
-                return 'stok-habis';
-            } else if (stok <= stokMin) {
-                return 'stok-hampir-habis';
-            }
+            if (stok === 0) return 'stok-habis';
+            if (stok <= stokMin) return 'stok-hampir-habis';
             return '';
         }
 
-        // Fungsi untuk menampilkan data barang ke tabel
+        // ---- Render tabel ----
         function renderBarangTable(barangList) {
             const tableBody = document.getElementById('stokTableBody');
             tableBody.innerHTML = '';
 
-            if (barangList.length === 0) {
+            if (!barangList.length) {
                 const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td colspan="7" class="px-6 py-4 text-center text-gray-500">
-                        Tidak ada data barang
-                    </td>
-                `;
+                row.innerHTML = `<td colspan="7" class="px-6 py-4 text-center text-gray-500">Tidak ada data barang</td>`;
                 tableBody.appendChild(row);
                 return;
             }
 
             barangList.forEach(barang => {
-                const status = getStatusStok(barang.stok, barang.stokMin);
-                const rowClass = getRowClass(barang.stok, barang.stokMin);
+                const status = getStatusStok(Number(barang.stok) || 0, Number(barang.stokMin) || 0);
+                const rowClass = getRowClass(Number(barang.stok) || 0, Number(barang.stokMin) || 0);
 
                 const row = document.createElement('tr');
                 row.className = `${rowClass} hover-row`;
@@ -851,7 +901,7 @@ if (isset($_GET['action'])) {
             });
         }
 
-        // Fungsi untuk mengisi dropdown pilih barang di modal
+        // ---- Select barang di modal ----
         function fillBarangSelect(selectId) {
             const select = document.getElementById(selectId);
             select.innerHTML = '<option value="">-- Pilih Barang --</option>';
@@ -865,74 +915,73 @@ if (isset($_GET['action'])) {
             });
         }
 
-        // Fungsi untuk membuka modal tambah stok
+        // ---- Modal handlers ----
         function openTambahStokModal() {
             document.getElementById('tambahStokModal').classList.remove('hidden');
             document.body.classList.add('modal-open');
             fillBarangSelect('barangSelectTambah');
+            applyStepForSelect('barangSelectTambah', 'jumlahStokTambah', 'hintTambah');
         }
 
-        // Fungsi untuk menutup modal tambah stok
         function closeTambahStokModal() {
             document.getElementById('tambahStokModal').classList.add('hidden');
             document.body.classList.remove('modal-open');
             document.getElementById('barangSelectTambah').value = '';
             document.getElementById('jumlahStokTambah').value = '';
             document.getElementById('keteranganTambah').value = '';
+            setStepHint(document.getElementById('jumlahStokTambah'), document.getElementById('hintTambah'), false);
         }
 
-        // Fungsi untuk membuka modal kurangi stok
         function openKurangiStokModal() {
             document.getElementById('kurangiStokModal').classList.remove('hidden');
             document.body.classList.add('modal-open');
             fillBarangSelect('barangSelectKurangi');
+            applyStepForSelect('barangSelectKurangi', 'jumlahStokKurangi', 'hintKurangi');
         }
 
-        // Fungsi untuk menutup modal kurangi stok
         function closeKurangiStokModal() {
             document.getElementById('kurangiStokModal').classList.add('hidden');
             document.body.classList.remove('modal-open');
             document.getElementById('barangSelectKurangi').value = '';
             document.getElementById('jumlahStokKurangi').value = '';
             document.getElementById('keteranganKurangi').value = '';
+            setStepHint(document.getElementById('jumlahStokKurangi'), document.getElementById('hintKurangi'), false);
         }
 
-        // Fungsi untuk membuka modal edit stok
         function openEditStokModal() {
             document.getElementById('editStokModal').classList.remove('hidden');
             document.body.classList.add('modal-open');
         }
 
-        // Fungsi untuk menutup modal edit stok
         function closeEditStokModal() {
             document.getElementById('editStokModal').classList.add('hidden');
             document.body.classList.remove('modal-open');
+            setStepHint(document.getElementById('stokBaru'), document.getElementById('hintEdit'), false);
         }
 
-        // Fungsi untuk menambah stok barang tertentu
+        // Aksi cepat by id
         function tambahStokBarang(barangId) {
             const barang = barangData.find(b => String(b.id) === String(barangId));
             if (barang) {
                 openTambahStokModal();
-                // setTimeout agar select sudah terisi dulu
                 setTimeout(() => {
                     document.getElementById('barangSelectTambah').value = String(barangId);
+                    applyStepForBarang(barangId, 'jumlahStokTambah', 'hintTambah');
                 }, 100);
             }
         }
 
-        // Fungsi untuk mengurangi stok barang tertentu
         function kurangiStokBarang(barangId) {
             const barang = barangData.find(b => String(b.id) === String(barangId));
             if (barang) {
                 openKurangiStokModal();
                 setTimeout(() => {
                     document.getElementById('barangSelectKurangi').value = String(barangId);
+                    applyStepForBarang(barangId, 'jumlahStokKurangi', 'hintKurangi');
                 }, 100);
             }
         }
 
-        // Fungsi untuk membuka modal edit stok
         function editStok(barangId, namaBarang, kodeBarang, stokSekarang) {
             document.getElementById('editBarangId').value = barangId;
             document.getElementById('editNamaBarang').textContent = namaBarang;
@@ -940,20 +989,21 @@ if (isset($_GET['action'])) {
             document.getElementById('stokLama').value = stokSekarang;
             document.getElementById('stokBaru').value = stokSekarang;
             openEditStokModal();
+            // set step sesuai satuan
+            applyStepForBarang(barangId, 'stokBaru', 'hintEdit');
         }
 
-        // Fungsi untuk memproses penambahan stok
+        // Proses tambah stok
         async function tambahStok() {
             const barangId = document.getElementById('barangSelectTambah').value;
-            const jumlah = parseInt(document.getElementById('jumlahStokTambah').value);
+            const jumlah = parseFloat(document.getElementById('jumlahStokTambah').value);
             const keterangan = document.getElementById('keteranganTambah').value;
 
             if (!barangId) {
                 showToast('Pilih barang terlebih dahulu!', 'error');
                 return;
             }
-
-            if (!jumlah || jumlah < 1) {
+            if (!isFinite(jumlah) || jumlah <= 0) {
                 showToast('Masukkan jumlah stok yang valid!', 'error');
                 return;
             }
@@ -966,17 +1016,16 @@ if (isset($_GET['action'])) {
                     },
                     body: JSON.stringify({
                         id: barangId,
-                        jumlah: jumlah,
-                        keterangan: keterangan
+                        jumlah,
+                        keterangan
                     })
                 });
-
                 const result = await response.json();
 
                 if (result.success) {
                     showToast('Stok berhasil ditambahkan!', 'success');
                     closeTambahStokModal();
-                    loadBarangData(); // Muat ulang data dari server
+                    loadBarangData();
                 } else {
                     showToast('Gagal menambah stok: ' + (result.message || ''), 'error');
                 }
@@ -986,20 +1035,18 @@ if (isset($_GET['action'])) {
             }
         }
 
-
-        // Fungsi untuk memproses pengurangan stok
+        // Proses kurangi stok
         async function kurangiStok() {
             const barangId = document.getElementById('barangSelectKurangi').value;
-            const jumlah = parseInt(document.getElementById('jumlahStokKurangi').value);
+            const jumlah = parseFloat(document.getElementById('jumlahStokKurangi').value);
             const keterangan = document.getElementById('keteranganKurangi').value;
 
             if (!barangId) {
-                alert('Pilih barang terlebih dahulu!');
+                showToast('Pilih barang terlebih dahulu!', 'error');
                 return;
             }
-
-            if (!jumlah || jumlah < 1) {
-                alert('Masukkan jumlah stok yang valid!');
+            if (!isFinite(jumlah) || jumlah <= 0) {
+                showToast('Masukkan jumlah stok yang valid!', 'error');
                 return;
             }
 
@@ -1011,39 +1058,36 @@ if (isset($_GET['action'])) {
                     },
                     body: JSON.stringify({
                         id: barangId,
-                        jumlah: jumlah,
-                        keterangan: keterangan
+                        jumlah,
+                        keterangan
                     })
                 });
-
                 const result = await response.json();
 
                 if (result.success) {
-                    alert('Stok berhasil dikurangi!');
+                    showToast('Stok berhasil dikurangi!', 'success');
                     closeKurangiStokModal();
-                    loadBarangData(); // Muat ulang data dari server
+                    loadBarangData();
                 } else {
-                    alert('Gagal: ' + result.message);
+                    showToast('Gagal: ' + (result.message || ''), 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Terjadi kesalahan saat mengurangi stok');
+                showToast('Terjadi kesalahan saat mengurangi stok', 'error');
             }
         }
 
-        // Fungsi untuk memproses update stok
+        // Proses update stok (absolute)
         async function updateStok() {
             const barangId = document.getElementById('editBarangId').value;
-            const stokBaru = parseInt(document.getElementById('stokBaru').value);
-            const stokLama = parseInt(document.getElementById('stokLama').value); // hidden input untuk stok lama
+            const stokBaru = parseFloat(document.getElementById('stokBaru').value);
+            const stokLama = parseFloat(document.getElementById('stokLama').value);
 
-            if (isNaN(stokBaru) || stokBaru < 0) {
+            if (!isFinite(stokBaru) || stokBaru < 0) {
                 showToast('Masukkan jumlah stok yang valid!', 'error');
                 return;
             }
-
-            // Cek kalau stok tidak berubah
-            if (stokBaru === stokLama) {
+            if (Math.abs(stokBaru - stokLama) < 1e-9) {
                 showToast('Tidak ada perubahan stok yang dilakukan.', 'info');
                 closeEditStokModal();
                 return;
@@ -1060,13 +1104,12 @@ if (isset($_GET['action'])) {
                         stok: stokBaru
                     })
                 });
-
                 const result = await response.json();
 
                 if (result.success) {
                     showToast('Stok berhasil diperbarui!', 'success');
                     closeEditStokModal();
-                    loadBarangData(); // Muat ulang data dari server
+                    loadBarangData();
                 } else {
                     showToast('Gagal memperbarui stok: ' + (result.message || ''), 'error');
                 }
@@ -1076,18 +1119,15 @@ if (isset($_GET['action'])) {
             }
         }
 
-        // Fungsi untuk membuka modal hapus riwayat
+        // Hapus riwayat (konfirmasi)
         function openHapusRiwayatModal(barangId = null, barangNama = null) {
             let message = '';
-
             if (barangId && barangId !== 'all') {
-                const barang = barangData.find(b => b.id === barangId);
-                const namaBarang = barang ? barang.nama : barangNama;
-                message = `Apa Anda yakin ingin menghapus semua riwayat stok untuk <strong>${namaBarang}</strong>?
-        \n\nTindakan ini tidak dapat dibatalkan!`;
+                const barang = barangData.find(b => String(b.id) === String(barangId));
+                const nama = barang ? barang.nama : (barangNama || '');
+                message = `Apa Anda yakin ingin menghapus semua riwayat stok untuk <strong>${nama}</strong>?\n\nTindakan ini tidak dapat dibatalkan!`;
             } else {
-                message = `Apa Anda yakin ingin menghapus semua riwayat stok dari semua barang?
-        \n\nTindakan ini tidak dapat dibatalkan!`;
+                message = `Apa Anda yakin ingin menghapus semua riwayat stok dari semua barang?\n\nTindakan ini tidak dapat dibatalkan!`;
             }
 
             showConfirm(
@@ -1100,15 +1140,12 @@ if (isset($_GET['action'])) {
                                     'Content-Type': 'application/json'
                                 },
                                 body: JSON.stringify({
-                                    barangId: barangId || 'all'
+                                    id_barang: barangId || 'all'
                                 })
                             });
-
                             const result = await response.json();
-
                             if (result.success) {
                                 showToast(result.message || 'Riwayat berhasil dihapus!', 'success');
-                                // Muat ulang data atau refresh tampilan riwayat
                                 loadBarangData();
                             } else {
                                 showToast('Gagal menghapus riwayat: ' + (result.message || ''), 'error');
@@ -1124,17 +1161,12 @@ if (isset($_GET['action'])) {
             );
         }
 
-
-        // Fungsi untuk menutup modal hapus riwayat
         function closeHapusRiwayatModal() {
             document.getElementById('hapusRiwayatModal').classList.add('hidden');
             document.body.classList.remove('modal-open');
         }
-
-        // Fungsi untuk menghapus riwayat
         async function hapusRiwayat() {
             const barangId = document.getElementById('hapusRiwayatBarangId').value;
-
             try {
                 const response = await fetch('stok.php?action=hapus_riwayat', {
                     method: 'POST',
@@ -1142,19 +1174,15 @@ if (isset($_GET['action'])) {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        id_barang: barangId === 'all' ? null : barangId
+                        id_barang: (barangId === 'all' ? 'all' : barangId)
                     })
                 });
-
                 const result = await response.json();
 
                 if (result.success) {
                     alert(result.message);
                     closeHapusRiwayatModal();
-
-                    // Jika sedang melihat riwayat barang tertentu, perbarui tampilan
                     if (currentRiwayatBarangId && !document.getElementById('modalRiwayat').classList.contains('hidden')) {
-                        // Refresh tampilan riwayat jika yang dihapus adalah riwayat barang yang sedang dilihat
                         if (barangId === 'all' || barangId === currentRiwayatBarangId) {
                             const barang = barangData.find(b => b.id === currentRiwayatBarangId);
                             if (barang) {
@@ -1162,12 +1190,9 @@ if (isset($_GET['action'])) {
                             }
                         }
                     }
-
-                    // Jika menghapus semua riwayat, tutup modal riwayat jika terbuka
                     if (barangId === 'all' && !document.getElementById('modalRiwayat').classList.contains('hidden')) {
                         tutupModalRiwayat();
                     }
-
                 } else {
                     alert('Gagal: ' + result.message);
                 }
@@ -1177,19 +1202,15 @@ if (isset($_GET['action'])) {
             }
         }
 
-        // Fungsi untuk menghapus riwayat barang yang sedang dilihat
         function hapusRiwayatBarang() {
             if (currentRiwayatBarangId) {
                 const barang = barangData.find(b => b.id === currentRiwayatBarangId);
-                if (barang) {
-                    openHapusRiwayatModal(currentRiwayatBarangId, barang.nama);
-                }
+                if (barang) openHapusRiwayatModal(currentRiwayatBarangId, barang.nama);
             }
         }
 
-        // Fungsi untuk melihat riwayat stok
+        // Lihat riwayat
         async function lihatRiwayat(barangId, namaBarang, kodeBarang, stokSekarang) {
-            // Simpan data barang yang sedang dilihat
             currentRiwayatBarangId = barangId;
             currentRiwayatNama = namaBarang;
             currentRiwayatKode = kodeBarang;
@@ -1199,60 +1220,51 @@ if (isset($_GET['action'])) {
                 const response = await fetch(`stok.php?action=get_riwayat&id=${barangId}`);
                 const riwayat = await response.json();
 
-                // Tampilkan modal riwayat
                 document.getElementById('modalRiwayat').classList.remove('hidden');
                 document.body.classList.add('modal-open');
 
-                // Update judul dan info
                 document.getElementById('riwayatTitle').textContent = `Riwayat Stok: ${namaBarang}`;
                 document.getElementById('riwayatInfo').textContent = `${kodeBarang} - Stok saat ini: ${stokSekarang}`;
 
-                // Render tabel riwayat
                 const tableBody = document.getElementById('riwayatTableBody');
                 const emptyState = document.getElementById('riwayatEmptyState');
-
                 tableBody.innerHTML = '';
 
-                if (riwayat.length === 0) {
+                if (!riwayat.length) {
                     tableBody.classList.add('hidden');
                     emptyState.classList.remove('hidden');
                     return;
                 }
-
                 tableBody.classList.remove('hidden');
                 emptyState.classList.add('hidden');
 
                 riwayat.forEach(item => {
                     const row = document.createElement('tr');
                     row.className = 'fade-in';
-
                     const waktu = new Date(item.waktu);
                     const waktuFormatted = waktu.toLocaleString('id-ID', {
                         timeZone: 'Asia/Jakarta'
                     });
 
                     row.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap">${waktuFormatted}</td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="px-2 py-1 rounded-full text-xs font-semibold ${item.jenis === 'penambahan' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
-                        ${item.jenis === 'penambahan' ? 'Penambahan' : 'Pengurangan'}
-                    </span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap font-bold ${item.jenis === 'penambahan' ? 'text-green-600' : 'text-red-600'}">
-                    ${item.jenis === 'penambahan' ? '+' : '-'}${item.jumlah}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">${item.stok_sebelum}</td>
-                <td class="px-6 py-4 whitespace-nowrap font-bold">${item.stok_sesudah}</td>
-                <td class="px-6 py-4">${item.keterangan || '-'}</td>
-                <td class="px-6 py-4">
-                    <button onclick="hapusRiwayatEntry('${item.id_barang}', '${item.waktu}')" 
-                        class="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-100 transition-colors" 
-                        title="Hapus riwayat ini">
-                        <i class="fas fa-trash-alt"></i>
-                    </button>
-                </td>
-            `;
-
+                        <td class="px-6 py-4 whitespace-nowrap">${waktuFormatted}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 py-1 rounded-full text-xs font-semibold ${item.jenis === 'penambahan' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                                ${item.jenis === 'penambahan' ? 'Penambahan' : 'Pengurangan'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap font-bold ${item.jenis === 'penambahan' ? 'text-green-600' : 'text-red-600'}">
+                            ${item.jenis === 'penambahan' ? '+' : '-'}${item.jumlah}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">${item.stok_sebelum}</td>
+                        <td class="px-6 py-4 whitespace-nowrap font-bold">${item.stok_sesudah}</td>
+                        <td class="px-6 py-4">${item.keterangan || '-'}</td>
+                        <td class="px-6 py-4">
+                            <button onclick="hapusRiwayatEntry('${item.id_barang}', '${item.waktu}')" class="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-100 transition-colors" title="Hapus riwayat ini">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </td>
+                    `;
                     tableBody.appendChild(row);
                 });
 
@@ -1262,32 +1274,28 @@ if (isset($_GET['action'])) {
             }
         }
 
-
-        // Fungsi untuk menutup modal riwayat
         function tutupModalRiwayat() {
             document.getElementById('modalRiwayat').classList.add('hidden');
             document.body.classList.remove('modal-open');
         }
 
-        // Fungsi untuk menerapkan filter
+        // Filter
         function applyFilters() {
-            const searchText = document.getElementById('searchInput').value.toLowerCase();
+            const searchText = (document.getElementById('searchInput').value || '').toLowerCase();
             const statusFilter = document.getElementById('statusFilter').value;
 
             let filteredBarang = barangData;
 
-            // Filter berdasarkan pencarian
             if (searchText) {
                 filteredBarang = filteredBarang.filter(barang =>
-                    barang.nama.toLowerCase().includes(searchText) ||
-                    barang.kodeProduk.toLowerCase().includes(searchText)
+                    (barang.nama || '').toLowerCase().includes(searchText) ||
+                    (barang.kodeProduk || '').toLowerCase().includes(searchText)
                 );
             }
 
-            // Filter berdasarkan status stok
             if (statusFilter !== 'all') {
                 filteredBarang = filteredBarang.filter(barang => {
-                    const status = getStatusStok(barang.stok, barang.stokMin).status.toLowerCase();
+                    const status = getStatusStok(Number(barang.stok) || 0, Number(barang.stokMin) || 0).status.toLowerCase();
                     if (statusFilter === 'habis') return status === 'habis';
                     if (statusFilter === 'hampir-habis') return status === 'hampir habis';
                     if (statusFilter === 'cukup') return status === 'aman';
@@ -1304,13 +1312,11 @@ if (isset($_GET['action'])) {
             modal.classList.add("opacity-100", "scale-100");
         }
 
-
         function closePrintModal() {
             const modal = document.getElementById("printData");
             modal.classList.add("hidden");
             modal.classList.remove("opacity-100", "scale-100");
         }
-
 
         async function printData(mode) {
             try {
@@ -1322,8 +1328,8 @@ if (isset($_GET['action'])) {
                     dataExport = allBarang;
                 } else {
                     dataExport = allBarang.filter(b => {
-                        const stok = parseInt(b.stok) || 0;
-                        const stokMin = parseInt(b.stokMin) || 0;
+                        const stok = Number(b.stok) || 0;
+                        const stokMin = Number(b.stokMin) || 0;
                         return stok <= stokMin;
                     });
                 }
@@ -1333,7 +1339,6 @@ if (isset($_GET['action'])) {
                     return;
                 }
 
-                // Kirim ke PHP
                 const res = await fetch("struk_stok_barang.php", {
                     method: "POST",
                     headers: {
@@ -1343,12 +1348,11 @@ if (isset($_GET['action'])) {
                         mode
                     })
                 });
-
                 const result = await res.json();
 
                 if (result.status === "success") {
                     showToast(result.message, "success");
-                    closePrintModal()
+                    closePrintModal();
                 } else {
                     showToast("Gagal cetak: " + result.message, "error");
                 }
@@ -1359,16 +1363,19 @@ if (isset($_GET['action'])) {
             }
         }
 
+        // Inisialisasi
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadSatuan(); // muat dulu supaya hint/step akurat
+            await loadBarangData();
 
-        // Inisialisasi halaman saat pertama kali dimuat
-        document.addEventListener('DOMContentLoaded', function() {
-            loadBarangData();
-
-            // Tambahkan event listener untuk input pencarian
             document.getElementById('searchInput').addEventListener('keyup', applyFilters);
-
-            // Tambahkan event listener untuk filter status
             document.getElementById('statusFilter').addEventListener('change', applyFilters);
+
+            // Update step ketika pilihan barang berubah di modal
+            const selTambah = document.getElementById('barangSelectTambah');
+            const selKurangi = document.getElementById('barangSelectKurangi');
+            if (selTambah) selTambah.addEventListener('change', () => applyStepForSelect('barangSelectTambah', 'jumlahStokTambah', 'hintTambah'));
+            if (selKurangi) selKurangi.addEventListener('change', () => applyStepForSelect('barangSelectKurangi', 'jumlahStokKurangi', 'hintKurangi'));
 
             // Tutup modal saat klik di luar konten modal
             document.querySelectorAll('.modal-overlay').forEach(overlay => {
@@ -1384,7 +1391,7 @@ if (isset($_GET['action'])) {
         async function hapusRiwayatEntry(id_barang, waktu) {
             showConfirm(
                 "Yakin ingin menghapus riwayat ini?",
-                async () => { // Callback OK
+                async () => {
                         try {
                             const response = await fetch("stok.php?action=hapus_riwayat_entry", {
                                 method: "POST",
@@ -1392,17 +1399,15 @@ if (isset($_GET['action'])) {
                                     "Content-Type": "application/json"
                                 },
                                 body: JSON.stringify({
-                                    id_barang: id_barang,
-                                    waktu: waktu
+                                    id_barang,
+                                    waktu
                                 })
                             });
-
                             const result = await response.json();
 
                             if (result.success) {
                                 showToast(result.message || "Riwayat berhasil dihapus!", "success");
-                                // Refresh tampilan riwayat
-                                const barang = barangData.find(b => b.id === id_barang);
+                                const barang = barangData.find(b => String(b.id) === String(id_barang));
                                 if (barang) {
                                     lihatRiwayat(id_barang, barang.nama, barang.kodeProduk, barang.stok);
                                 }
@@ -1414,7 +1419,7 @@ if (isset($_GET['action'])) {
                             showToast("Terjadi kesalahan saat menghapus riwayat", "error");
                         }
                     },
-                    () => { // Callback Cancel
+                    () => {
                         showToast("Aksi dibatalkan", "info");
                     }
             );

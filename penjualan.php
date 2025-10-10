@@ -38,6 +38,7 @@ date_default_timezone_set('Asia/Jakarta');
 $barangFile = __DIR__ . "/data/barang.json";
 $penjualanFile = __DIR__ . "/data/penjualan.json";
 $hutangFile = __DIR__ . "/data/hutang.json";
+$satuanFile = __DIR__ . "/data/satuan.json";
 
 // Pastikan direktori data ada
 if (!file_exists(__DIR__ . "/data")) {
@@ -48,6 +49,25 @@ if (!file_exists(__DIR__ . "/data")) {
 if (!file_exists($barangFile)) file_put_contents($barangFile, "[]");
 if (!file_exists($penjualanFile)) file_put_contents($penjualanFile, "[]");
 if (!file_exists($hutangFile)) file_put_contents($hutangFile, "[]");
+if (!file_exists($satuanFile)) file_put_contents($satuanFile, "[]");
+$satuanList = json_decode(file_get_contents($satuanFile), true) ?? [];
+
+// set nama2 satuan yg is_variable = true (lowercase)
+$VAR_UNITS = [];
+foreach ($satuanList as $u) {
+    $nama = strtolower(trim($u['nama'] ?? ''));
+    if ($nama !== '' && !empty($u['is_variable'])) {
+        $VAR_UNITS[$nama] = true;
+    }
+}
+
+// helper: cek apakah product pakai satuan variable
+function isVariableUnitForProduct($product, $VAR_UNITS)
+{
+    $satuan = strtolower(trim($product['satuan'] ?? ''));
+    return isset($VAR_UNITS[$satuan]);
+}
+
 
 if (isset($_GET['action'])) {
     $barang = json_decode(file_get_contents($barangFile), true) ?? [];
@@ -83,23 +103,57 @@ if (isset($_GET['action'])) {
             // 1) Merge baris duplikat berdasarkan id + jenisHarga
             $mergedItems = [];
             foreach ($input['items'] as $item) {
-                $key = $item['id'] . '_' . $item['jenisHarga'];
-                if (isset($mergedItems[$key])) {
-                    $mergedItems[$key]['qty'] += (int)$item['qty'];
-                } else {
-                    $mergedItems[$key] = $item;
-                    $mergedItems[$key]['qty'] = (int)$mergedItems[$key]['qty'];
+                $pid = (int)($item['id'] ?? 0);
+
+                // cari product utk tahu satuan
+                $prod = null;
+                foreach ($barang as $b) {
+                    if ((int)$b['id'] === $pid) {
+                        $prod = $b;
+                        break;
+                    }
                 }
+                if (!$prod) continue;
+
+                $isVar = isVariableUnitForProduct($prod, $VAR_UNITS);
+                $rawQty = isset($item['qty']) ? (float)$item['qty'] : 0.0;
+
+                if ($isVar) {
+                    // desimal OK (pembulatan 3 angka di belakang koma)
+                    $normQty = max(0.01, round($rawQty, 3));
+                } else {
+                    // wajib bulat minimal 1
+                    $normQty = max(1, (int)round($rawQty));
+                    // kalau datang desimal padahal non-variable → tolak
+                    if (abs($rawQty - $normQty) > 1e-9 && $rawQty !== 0.0) {
+                        http_response_code(400);
+                        header('Content-Type: application/json');
+                        echo json_encode(['success' => false, 'error' => "Qty untuk satuan non-timbang harus bilangan bulat"]);
+                        exit;
+                    }
+                }
+
+                $jenis = $item['jenisHarga'] ?? 'ecer';
+                $key = $pid . '_' . $jenis;
+
+                if (!isset($mergedItems[$key])) {
+                    $mergedItems[$key] = [
+                        'id'         => $pid,
+                        'jenisHarga' => $jenis,
+                        'qty'        => 0.0
+                    ];
+                }
+                $mergedItems[$key]['qty'] += $normQty;
             }
 
-            // 2) Hitung qty gabungan per ID (tanpa peduli jenisHarga) → untuk validasi & pengurangan stok
+            // 2) Qty gabungan per ID (float)
             $qtyById = [];
             foreach ($mergedItems as $it) {
                 $pid = (int)$it['id'];
-                $qtyById[$pid] = ($qtyById[$pid] ?? 0) + (int)$it['qty'];
+                $qtyById[$pid] = ($qtyById[$pid] ?? 0.0) + (float)$it['qty'];
             }
 
-            // 3) VALIDASI STOK: tolak bila permintaan melebihi stok saat ini
+            // 3) VALIDASI STOK (float)
             foreach ($qtyById as $pid => $qtyReq) {
                 $found = null;
                 foreach ($barang as $b) {
@@ -114,8 +168,8 @@ if (isset($_GET['action'])) {
                     echo json_encode(['success' => false, 'error' => "Barang dengan ID {$pid} tidak ditemukan"]);
                     exit;
                 }
-                $stokNow = (int)($found['stok'] ?? 0);
-                if ($qtyReq > $stokNow) {
+                $stokNow = (float)($found['stok'] ?? 0);
+                if ($qtyReq > $stokNow + 1e-9) {
                     http_response_code(400);
                     header('Content-Type: application/json');
                     echo json_encode([
@@ -131,18 +185,24 @@ if (isset($_GET['action'])) {
             foreach ($mergedItems as $item) {
                 foreach ($barang as $b) {
                     if ((int)$b['id'] === (int)$item['id']) {
-                        $modalDasar = (int)($b['satuanHarga'][0]['hargaModal']  ?? 0);
-                        $hargaEcer  = (int)($b['satuanHarga'][0]['hargaEcer']   ?? 0);
+                        $modalDasar  = (int)($b['satuanHarga'][0]['hargaModal']  ?? 0);
+                        $hargaEcer   = (int)($b['satuanHarga'][0]['hargaEcer']   ?? 0);
                         $hargaGrosir = (int)($b['satuanHarga'][0]['hargaGrosir'] ?? 0);
 
-                        // Tentukan harga sesuai jenis
                         $item['harga'] = ($item['jenisHarga'] === 'grosir') ? $hargaGrosir : $hargaEcer;
 
+                        $qty   = (float)$item['qty'];
+                        $isVar = isVariableUnitForProduct($b, $VAR_UNITS);
+
                         $item['hargaModal'] = $modalDasar;
-                        $item['laba']       = ($item['harga'] - $modalDasar) * (int)$item['qty'];
+                        $item['laba']       = ($item['harga'] - $modalDasar) * $qty;
 
                         $totalLaba  += $item['laba'];
-                        $totalHarga += $item['harga'] * (int)$item['qty'];
+                        $totalHarga += $item['harga'] * $qty;
+
+                        // rapikan qty utk simpan
+                        $item['qty']  = $isVar ? round($qty, 3) : (int)round($qty);
+                        $item['nama'] = $b['nama']; // optional: agar item punya nama
 
                         $input['items'][] = $item;
                         break;
@@ -150,7 +210,7 @@ if (isset($_GET['action'])) {
                 }
             }
 
-            // 5) Totalkan & diskon
+            // 5) Totalkan & diskon (=== tetap ===)
             $diskon     = (int)($input['diskon'] ?? 0);
             $grandTotal = max(0, $totalHarga - $diskon);
 
@@ -158,14 +218,21 @@ if (isset($_GET['action'])) {
             $input['grandTotal'] = $grandTotal;
             $input['totalLaba']  = $totalLaba;
 
-            // 6) Simpan transaksi
+            // 6) Simpan transaksi (=== tetap ===)
             $penjualan[] = $input;
 
-            // 7) KURANGI STOK SEKALI PER PRODUK (pakai qty gabungan)
+            // 7) KURANGI STOK SEKALI PER PRODUK (pakai qty gabungan; float utk variable, int utk non-variable)
             foreach ($barang as &$b) {
                 $pid = (int)$b['id'];
-                if (isset($qtyById[$pid])) {
-                    $b['stok'] = max(0, (int)$b['stok'] - (int)$qtyById[$pid]);
+                if (!isset($qtyById[$pid])) continue;
+
+                $isVar   = isVariableUnitForProduct($b, $VAR_UNITS);
+                $newStok = (float)$b['stok'] - (float)$qtyById[$pid];
+
+                if ($isVar) {
+                    $b['stok'] = max(0, round($newStok, 3));
+                } else {
+                    $b['stok'] = max(0, (int)round($newStok));
                 }
             }
             unset($b);
@@ -490,6 +557,23 @@ if (isset($_GET['action'])) {
         });
 
 
+        // === daftar satuan yg support timbang (desimal) ===
+        let VAR_UNITS = new Set();
+        async function muatSatuanTimbang() {
+            try {
+                const r = await fetch('satuan.php?action=get_satuan');
+                const data = await r.json();
+                VAR_UNITS = new Set((data || [])
+                    .filter(u => u.is_variable)
+                    .map(u => String(u.nama || '').toLowerCase())
+                );
+            } catch (e) {
+                console.warn('Gagal memuat satuan', e);
+                VAR_UNITS = new Set();
+            }
+        }
+
+
 
         // Handler global SATU-SATUNYA
         document.addEventListener('keydown', (e) => {
@@ -573,7 +657,11 @@ if (isset($_GET['action'])) {
 
         // Memuat keranjang saat halaman dimuat
         document.addEventListener('DOMContentLoaded', function() {
-            muatKeranjangDariPenyimpanan();
+            muatSatuanTimbang().then(() => {
+                muatKeranjangDariPenyimpanan();
+                normalizeCartFlags();
+                perbaruiKeranjang(); // pastikan tampil sesuai flag terbaru
+            });
             document.getElementById('cariBarang').focus();
 
             document.getElementById('cariBarang').addEventListener('keypress', function(e) {
@@ -705,10 +793,16 @@ if (isset($_GET['action'])) {
 
         function qtyInCartById(id, exceptIndex = -1) {
             return keranjang.reduce((sum, it, i) => {
-                return sum + ((it.id === id && i !== exceptIndex) ? it.qty : 0);
+                return sum + ((it.id === id && i !== exceptIndex) ? Number(it.qty || 0) : 0);
             }, 0);
         }
 
+
+        function fmtQty(q, isVar) {
+            if (!isVar) return String(Math.round(q));
+            const v = Math.round(Number(q || 0) * 1000) / 1000;
+            return v.toString().replace(/(\.\d*?[1-9])0+$/, '$1').replace(/\.0+$/, '');
+        }
 
         function tambahKeKeranjang(barang, jenisHarga) {
             const hargaEcer = Number(barang?.satuanHarga?.[0]?.hargaEcer || 0);
@@ -717,27 +811,30 @@ if (isset($_GET['action'])) {
             const jenis = jenisHarga || 'ecer';
             const harga = (jenis === 'grosir') ? hargaGrosir : hargaEcer;
 
-            const idx = keranjang.findIndex(i => i.id === barang.id && i.jenisHarga === jenis);
+            const unitName = String(barang?.satuan || '').toLowerCase();
+            const isVariable = VAR_UNITS.has(unitName);
 
             // total qty produk ini (semua jenis) yang SUDAH ada di keranjang
             const totalAlready = qtyInCartById(barang.id);
 
             // stok habis / penuh?
-            if (totalAlready >= barang.stok) {
+            const stok = Number(barang.stok || 0);
+            if (totalAlready >= stok) {
                 window.showToast('Stok tidak mencukupi!', 'error', 4000);
                 return;
             }
 
+            const idx = keranjang.findIndex(i => i.id === barang.id && i.jenisHarga === jenis);
+
+            const inc = isVariable ? 0.1 : 1;
             if (idx !== -1) {
-                // mau menambah 1 pada baris yang sama jenisnya
-                if (totalAlready + 1 > barang.stok) {
+                if (totalAlready + inc > stok + 1e-9) {
                     window.showToast('Stok tidak mencukupi!', 'error', 4000);
                     return;
                 }
-                keranjang[idx].qty += 1;
+                keranjang[idx].qty = Math.round((keranjang[idx].qty + inc) * 1000) / 1000;
             } else {
-                // menambah baris baru (jenis berbeda)
-                if (totalAlready + 1 > barang.stok) {
+                if (totalAlready + inc > stok + 1e-9) {
                     window.showToast('Stok tidak mencukupi!', 'error', 4000);
                     return;
                 }
@@ -748,8 +845,10 @@ if (isset($_GET['action'])) {
                     hargaGrosir,
                     harga,
                     jenisHarga: jenis,
-                    qty: 1,
-                    stok: barang.stok
+                    qty: inc, // 0.1 utk variable, 1 utk non-variable
+                    stok: stok,
+                    satuan: unitName,
+                    isVariable
                 });
             }
 
@@ -757,6 +856,7 @@ if (isset($_GET['action'])) {
             simpanKeranjangKePenyimpanan();
             window.showToast(`${barang.nama} berhasil ditambahkan ke keranjang.`, 'success', 3000);
         }
+
 
 
         function ubahJenis(index, jenis) {
@@ -820,6 +920,8 @@ if (isset($_GET['action'])) {
             let html = '';
 
             keranjang.forEach((item, index) => {
+                const stepAttr = item.isVariable ? '0.01' : '1';
+                const minAttr = item.isVariable ? '0.01' : '1';
                 const subtotal = item.harga * item.qty;
                 const selectColorClass =
                     item.jenisHarga === 'grosir' ?
@@ -840,8 +942,11 @@ if (isset($_GET['action'])) {
                         <button onclick="ubahQty(${index}, -1)" class="bg-gray-200 px-2 py-1 rounded-l hover:bg-gray-300 transition-colors duration-200">
                             <i class="fas fa-minus text-xs"></i>
                         </button>
-                        <input type="number" value="${item.qty}" min="1" max="${item.stok}" 
-                               class="w-12 text-center border-y py-1" onchange="ubahQtyManual(${index}, this.value)">
+                        <input type="number"
+                        value="${fmtQty(item.qty, item.isVariable)}"
+                        step="${stepAttr}" min="${minAttr}" max="${item.stok}"
+                        class="w-20 text-center border-y py-1"
+                        onchange="ubahQtyManual(${index}, this.value)">
                         <button onclick="ubahQty(${index}, 1)" class="bg-gray-200 px-2 py-1 rounded-r hover:bg-gray-300 transition-colors duration-200">
                             <i class="fas fa-plus text-xs"></i>
                         </button>
@@ -892,18 +997,25 @@ if (isset($_GET['action'])) {
             if (!item) return;
 
             const stok = Number(item.stok || 0);
-
-            // qty yang sudah ada untuk produk ini di baris lain (ecer/grosir lain)
             const otherQty = qtyInCartById(item.id, index);
 
-            let newQty = Number(item.qty || 1) + Number(delta || 0);
-            if (newQty < 1) newQty = 1;
+            const inc = item.isVariable ? 0.1 : 1;
+            let newQty = Number(item.qty || (item.isVariable ? 0.1 : 1)) + (Number(delta || 0) * inc);
 
-            // Validasi stok: total (qty baris ini + baris lain) tidak boleh > stok
-            if (otherQty + newQty > stok) {
+            if (item.isVariable) {
+                if (newQty < 0.01) newQty = 0.01;
+                newQty = Math.round(newQty * 1000) / 1000; // 3 desimal
+            } else {
+                if (newQty < 1) newQty = 1;
+                newQty = Math.round(newQty);
+            }
+
+            if (otherQty + newQty > stok + 1e-9) {
                 const sisa = Math.max(0, stok - otherQty);
-                window.showToast(`Stok tidak mencukupi! Maksimal bisa ${sisa}`, 'error', 4000);
-                newQty = Math.max(1, sisa);
+                window.showToast(`Stok tidak mencukupi! Maksimal bisa ${fmtQty(sisa, item.isVariable)}`, 'error', 4000);
+                newQty = sisa > 0 ? sisa : (item.isVariable ? 0.01 : 1);
+                if (!item.isVariable) newQty = Math.round(newQty);
+                else newQty = Math.round(newQty * 1000) / 1000;
             }
 
             item.qty = newQty;
@@ -911,22 +1023,29 @@ if (isset($_GET['action'])) {
             simpanKeranjangKePenyimpanan();
         }
 
-        // === GANTI dengan satu-satunya definisi ini (hapus duplikat yang lain) ===
         function ubahQtyManual(index, value) {
             const item = keranjang[index];
             if (!item) return;
 
             const stok = Number(item.stok || 0);
             const otherQty = qtyInCartById(item.id, index);
-            let newQty = parseInt(value, 10);
 
-            if (isNaN(newQty) || newQty < 1) newQty = 1;
+            let newQty = Number(value);
 
-            // clamp terhadap stok gabungan
-            if (otherQty + newQty > stok) {
+            if (item.isVariable) {
+                if (!isFinite(newQty) || newQty < 0.01) newQty = 0.01;
+                newQty = Math.round(newQty * 1000) / 1000;
+            } else {
+                newQty = Math.round(newQty);
+                if (!isFinite(newQty) || newQty < 1) newQty = 1;
+            }
+
+            if (otherQty + newQty > stok + 1e-9) {
                 const sisa = Math.max(0, stok - otherQty);
-                window.showToast(`Stok tidak mencukupi! Maksimal bisa ${sisa}`, 'error', 4000);
-                newQty = Math.max(1, sisa);
+                window.showToast(`Stok tidak mencukupi! Maksimal bisa ${fmtQty(sisa, item.isVariable)}`, 'error', 4000);
+                newQty = sisa > 0 ? sisa : (item.isVariable ? 0.01 : 1);
+                if (!item.isVariable) newQty = Math.round(newQty);
+                else newQty = Math.round(newQty * 1000) / 1000;
             }
 
             item.qty = newQty;
@@ -1163,6 +1282,26 @@ if (isset($_GET['action'])) {
             return !!document.querySelector('.confirm-mask');
         }
 
+        function normalizeCartFlags() {
+            try {
+                keranjang = (keranjang || []).map(it => {
+                    const satuan = String(it.satuan || '').toLowerCase(); // kalau dulu belum ada, bakal kosong
+                    // kalau belum ada isVariable, tentukan dari VAR_UNITS + satuan
+                    if (typeof it.isVariable === 'undefined') {
+                        it.isVariable = satuan ? VAR_UNITS.has(satuan) : false;
+                    }
+                    // rapikan qty sesuai isVariable
+                    if (it.isVariable) {
+                        it.qty = Math.max(0.01, Math.round(Number(it.qty || 0.01) * 1000) / 1000);
+                    } else {
+                        it.qty = Math.max(1, Math.round(Number(it.qty || 1)));
+                    }
+                    return it;
+                });
+            } catch (e) {}
+        }
+
+
         // Menampilkan struk
         function tampilkanStruk(items, total, diskon, grandTotal, bayar, kembalian, hutang, namaPembeli) {
             const strukContent = document.getElementById('strukContent');
@@ -1194,12 +1333,16 @@ if (isset($_GET['action'])) {
 
             items.forEach(item => {
                 const subtotal = item.harga * item.qty;
+                const isVar = !!item.isVariable; // kalau item tidak punya flag, boleh deteksi dari item.satuan & VAR_UNITS
+                const qtyText = fmtQty(item.qty, isVar);
                 html += `
-            <div class="flex justify-between text-sm py-1">
-                <span>${item.nama} <span class="text-xs ${item.jenisHarga === 'ecer' ? 'text-blue-600' : 'text-green-600'}">(${item.jenisHarga})</span> x${item.qty}</span>
+                <div class="flex justify-between text-sm py-1">
+                <span>${item.nama} 
+                    <span class="text-xs ${item.jenisHarga === 'ecer' ? 'text-blue-600' : 'text-green-600'}">(${item.jenisHarga})</span> x${qtyText}
+                </span>
                 <span>Rp ${subtotal.toLocaleString('id-ID')}</span>
-            </div>
-        `;
+                </div>
+            `;
             });
 
             html += `

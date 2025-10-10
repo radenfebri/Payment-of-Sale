@@ -358,5 +358,51 @@
         "waktu": "2025-10-01 20:14:07",
         "totalLaba": 2588,
         "recorded_in_keuangan": true
+    },
+    {
+        "items": [
+            {
+                "id": 1758442450,
+                "jenisHarga": "ecer",
+                "qty": 0.5,
+                "harga": 19000,
+                "hargaModal": 15000,
+                "laba": 2000,
+                "nama": "Minyak Goreng 1L"
+            }
+        ],
+        "total": 9500,
+        "diskon": 0,
+        "grandTotal": 9500,
+        "bayar": 0,
+        "kembalian": 0,
+        "hutang": 9500,
+        "nama_pembeli": "Pelanggan1",
+        "id": 1760063487,
+        "waktu": "2025-10-10 09:31:27",
+        "totalLaba": 2000
+    },
+    {
+        "items": [
+            {
+                "id": 1758442450,
+                "jenisHarga": "ecer",
+                "qty": 0.3,
+                "harga": 19000,
+                "hargaModal": 15000,
+                "laba": 1200,
+                "nama": "Minyak Goreng 1L"
+            }
+        ],
+        "total": 5700,
+        "diskon": 0,
+        "grandTotal": 5700,
+        "bayar": 0,
+        "kembalian": 0,
+        "hutang": 5700,
+        "nama_pembeli": "Pelanggan2",
+        "id": 1760063746,
+        "waktu": "2025-10-10 09:35:46",
+        "totalLaba": 1200
     }
 ]

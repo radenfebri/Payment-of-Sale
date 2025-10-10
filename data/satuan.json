@@ -1,66 +1,82 @@
 [
     {
         "id": 1758380203,
-        "nama": "pcs"
+        "nama": "pcs",
+        "is_variable": false
     },
     {
         "id": 1758382058,
-        "nama": "box"
+        "nama": "box",
+        "is_variable": false
     },
     {
         "id": 1758384739,
-        "nama": "bijian"
+        "nama": "bijian",
+        "is_variable": false
     },
     {
         "id": 1758442325,
-        "nama": "kg"
+        "nama": "kg",
+        "is_variable": false
     },
     {
         "id": 1758442330,
-        "nama": "liter"
+        "nama": "liter",
+        "is_variable": true
     },
     {
         "id": 1758442331,
-        "nama": "pak"
+        "nama": "pak",
+        "is_variable": false
     },
     {
         "id": 1758442332,
-        "nama": "lusin"
+        "nama": "lusin",
+        "is_variable": false
     },
     {
         "id": 1758442333,
-        "nama": "rim"
+        "nama": "rim",
+        "is_variable": false
     },
     {
         "id": 1758442334,
-        "nama": "roll"
+        "nama": "roll",
+        "is_variable": false
     },
     {
         "id": 1758442335,
-        "nama": "kaleng"
+        "nama": "kaleng",
+        "is_variable": false
     },
     {
         "id": 1758442336,
-        "nama": "botol"
+        "nama": "botol",
+        "is_variable": false
     },
     {
         "id": 1758442337,
-        "nama": "sachet"
+        "nama": "sachet",
+        "is_variable": false
     },
     {
         "id": 1758442338,
-        "nama": "karung"
+        "nama": "karung",
+        "is_variable": false
     },
     {
         "id": 1758442339,
-        "nama": "dus"
+        "nama": "dus",
+        "is_variable": false
     },
     {
         "id": 1758442340,
-        "nama": "set"
+        "nama": "set",
+        "is_variable": false
     },
     {
         "id": 1758601880,
-        "nama": "asdas"
+        "nama": "asdas",
+        "is_variable": false
     }
 ]

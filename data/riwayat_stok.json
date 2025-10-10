@@ -1,1 +1,57 @@
-[]
+[
+    {
+        "id_barang": "1758442450",
+        "kode_produk": "TMY291392",
+        "nama_barang": "Minyak Goreng 1L",
+        "jumlah": 5.5,
+        "jenis": "penambahan",
+        "keterangan": "tes",
+        "waktu": "2025-10-10 10:08:37",
+        "stok_sebelum": 70.5,
+        "stok_sesudah": 76
+    },
+    {
+        "id_barang": "1758442450",
+        "kode_produk": "TMY291392",
+        "nama_barang": "Minyak Goreng 1L",
+        "jumlah": 0.1,
+        "jenis": "pengurangan",
+        "keterangan": "",
+        "waktu": "2025-10-10 10:08:59",
+        "stok_sebelum": 76,
+        "stok_sesudah": 75.9
+    },
+    {
+        "id_barang": "1758442450",
+        "kode_produk": "TMY291392",
+        "nama_barang": "Minyak Goreng 1L",
+        "jumlah": 6,
+        "jenis": "penambahan",
+        "keterangan": "Update stok manual",
+        "waktu": "2025-10-10 10:14:21",
+        "stok_sebelum": 75.9,
+        "stok_sesudah": 81.9
+    },
+    {
+        "id_barang": "1758442448",
+        "kode_produk": "TMY291390",
+        "nama_barang": "Gula Pasir",
+        "jumlah": 1,
+        "jenis": "penambahan",
+        "keterangan": "Update stok manual",
+        "waktu": "2025-10-10 10:14:41",
+        "stok_sebelum": 88,
+        "stok_sesudah": 89
+    },
+    {
+        "id_barang": "1758442448",
+        "kode_produk": "TMY291390",
+        "nama_barang": "Gula Pasir",
+        "jumlah": 1,
+        "jenis": "penambahan",
+        "keterangan": "Update stok manual",
+        "waktu": "2025-10-10 10:14:46",
+        "stok_sebelum": 89,
+        "stok_sesudah": 90
+    }
+]

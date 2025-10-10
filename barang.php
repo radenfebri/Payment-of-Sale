@@ -43,6 +43,21 @@ $setting = array_replace_recursive($defaults, $setting);
 if (!is_file($barangFile))  file_put_contents($barangFile, "[]", LOCK_EX);
 if (!is_file($satuanFile))  file_put_contents($satuanFile, "[]", LOCK_EX);
 
+if (!function_exists('isVarUnit')) {
+  function isVarUnit($satuanNama, array $satuanList): bool
+  {
+    $key = strtolower(trim((string)$satuanNama));
+    if ($key === '') return false;
+    foreach ($satuanList as $s) {
+      $nm = strtolower(trim((string)($s['nama'] ?? '')));
+      if ($nm === $key) {
+        return !empty($s['is_variable']); // true kalau support desimal
+      }
+    }
+    return false;
+  }
+}
+
 if (isset($_GET['action'])) {
   $barang = json_decode(file_get_contents($barangFile), true) ?? [];
   $satuan = json_decode(file_get_contents($satuanFile), true) ?? [];
@@ -63,6 +78,10 @@ if (isset($_GET['action'])) {
       }
       $input['id'] = time();
       $input['satuanHarga'] = $input['satuanHarga'] ?? [];
+      $satuanNama = $input['satuan'] ?? ($input['satuanHarga'][0]['satuan'] ?? '');
+      $isVar = isVarUnit($satuanNama, $satuan);
+      $stokRaw = (float)($input['stok'] ?? 0);
+      $input['stok'] = $isVar ? max(0, round($stokRaw, 3)) : max(0, (int)round($stokRaw));
       $barang[] = $input;
       file_put_contents(
         $barangFile,
@@ -82,6 +101,11 @@ if (isset($_GET['action'])) {
       }
       $found = false;
       foreach ($barang as &$d) {
+        $satuanNama = $input['satuan'] ?? ($input['satuanHarga'][0]['satuan'] ?? '');
+        $isVar = isVarUnit($satuanNama, $satuan);
+        $stokRaw = (float)($input['stok'] ?? 0);
+        $input['stok'] = $isVar ? max(0, round($stokRaw, 3)) : max(0, (int)round($stokRaw));
+
         if ((int)$d['id'] === (int)($input['id'] ?? 0)) {
           $d = $input;
           $found = true;
@@ -144,12 +168,20 @@ if (isset($_GET['action'])) {
         exit;
       }
       $namaBaru = trim((string)($input['nama'] ?? ''));
+      $isVariable = !empty($input['is_variable']); // <-- baru
+
       if ($namaBaru === '') {
         header('Content-Type: application/json');
         echo json_encode(['success' => false, 'error' => 'Nama satuan wajib diisi']);
         exit;
       }
-      $satuan[] = ["id" => time(), "nama" => $namaBaru];
+
+      $satuan[] = [
+        "id" => time(),
+        "nama" => $namaBaru,
+        "is_variable" => (bool)$isVariable, // <-- baru
+      ];
+
       file_put_contents(
         $satuanFile,
         json_encode($satuan, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
@@ -408,6 +440,7 @@ if (isset($_GET['action'])) {
     // Variabel global untuk menyimpan data barang
     let allBarang = [];
     let filteredBarang = [];
+    let SATUAN_MAP = new Map();
 
     // Fungsi untuk membuka modal
     function bukaModal() {
@@ -444,17 +477,22 @@ if (isset($_GET['action'])) {
         if (!res.ok) throw new Error("Gagal mengambil data satuan");
 
         let data = await res.json();
+        SATUAN_MAP.clear();
+        data.forEach(s => {
+          SATUAN_MAP.set(String(s.nama || '').toLowerCase(), {
+            is_variable: !!s.is_variable
+          });
+        });
+
         let filterSatuanSelect = document.getElementById("filterSatuan");
         let satuanSelect = document.getElementById("satuan");
 
-        // Kosongkan dulu opsi yang ada (kecuali opsi default)
         filterSatuanSelect.innerHTML = '<option value="">Filter Berdasarkan Satuan</option>';
         satuanSelect.innerHTML = '<option value="" disabled selected>Pilih Satuan</option>';
 
-        // Tambahkan opsi satuan
         data.forEach(s => {
           filterSatuanSelect.innerHTML += `<option value="${s.nama}">${s.nama}</option>`;
-          satuanSelect.innerHTML += `<option value="${s.nama}">${s.nama}</option>`;
+          satuanSelect.innerHTML += `<option value="${s.nama}">${s.nama}${s.is_variable ? ' (timbang)' : ''}</option>`;
         });
       } catch (error) {
         console.error("Error loading satuan options:", error);
@@ -640,6 +678,8 @@ if (isset($_GET['action'])) {
       let nama = prompt("Nama satuan baru:");
       if (!nama) return;
 
+      let isVar = confirm("Apakah satuan ini support timbang (qty desimal)?");
+
       try {
         let res = await fetch("?action=satuan_add", {
           method: "POST",
@@ -647,23 +687,25 @@ if (isset($_GET['action'])) {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            nama
-          })
+            nama,
+            is_variable: isVar
+          }) // <-- kirim flag
         });
 
         let result = await res.json();
         if (result.success) {
-          loadSatuan();
-          loadSatuanOptions(); // Memperbarui opsi filter juga
-          alert("Satuan berhasil ditambahkan");
+          await loadSatuanOptions();
+          await loadSatuan(); // refresh dropdown form
+          showToast("Satuan berhasil ditambahkan", "success");
         } else {
-          alert("Gagal menambahkan satuan");
+          showToast("Gagal menambahkan satuan", "error");
         }
       } catch (error) {
         console.error("Error adding satuan:", error);
-        alert("Error: " + error.message);
+        showToast("Error: " + error.message, "error");
       }
     }
+
 
     // Fungsi untuk mendapatkan barang berdasarkan ID
     async function getBarangById(id) {
@@ -697,6 +739,7 @@ if (isset($_GET['action'])) {
         // Set satuan
         if (barang.satuan) {
           document.getElementById("satuan").value = barang.satuan;
+          document.getElementById("satuan").dispatchEvent(new Event('change'));
         }
 
         // Set harga
@@ -731,11 +774,27 @@ if (isset($_GET['action'])) {
       const id = document.getElementById("id").value;
       const isEdit = !!id;
 
+      const satuanNama = document.getElementById("satuan").value;
+      const isVar = SATUAN_MAP.get(String(satuanNama || '').toLowerCase())?.is_variable === true;
+
+      let stokInput = document.getElementById("stok").value;
+      let stokVal = parseFloat(stokInput);
+
+      if (!isFinite(stokVal)) stokVal = 0;
+
+      if (isVar) {
+        // izinkan desimal, simpan 3 angka di belakang koma
+        stokVal = Math.max(0, Math.round(stokVal * 1000) / 1000);
+      } else {
+        // wajib bulat
+        stokVal = Math.max(0, Math.round(stokVal));
+      }
+
       let barang = {
         id: id || Date.now(),
         kodeProduk: document.getElementById("kodeProduk").value,
         nama: document.getElementById("nama").value,
-        stok: parseInt(document.getElementById("stok").value) || 0,
+        stok: stokVal,
         stokMin: parseInt(document.getElementById("stokMin").value) || 0,
         satuan: document.getElementById("satuan").value,
         satuanHarga: [{
@@ -837,6 +896,11 @@ if (isset($_GET['action'])) {
     // Event listener untuk perubahan satuan
     document.getElementById("satuan").addEventListener("change", function() {
       const satuan = this.value;
+      const stokEl = document.getElementById("stok");
+      const key = String(satuan || '').toLowerCase();
+      const isVar = SATUAN_MAP.get(key)?.is_variable === true;
+
+      // placeholder harga (sudah ada)
       if (satuan) {
         document.getElementById("hargaModal").placeholder = "Harga Modal (" + satuan + ")";
         document.getElementById("hargaEcer").placeholder = "Harga Ecer (" + satuan + ")";
@@ -846,7 +910,19 @@ if (isset($_GET['action'])) {
         document.getElementById("hargaEcer").placeholder = "Harga Ecer";
         document.getElementById("hargaGrosir").placeholder = "Harga Jual Ulang";
       }
+
+      // <-- baru: atur input stok
+      if (isVar) {
+        stokEl.step = "0.01";
+        stokEl.min = "0.01";
+        stokEl.placeholder = "Jumlah (" + satuan + ", boleh 2-3 desimal)";
+      } else {
+        stokEl.step = "1";
+        stokEl.min = "0";
+        stokEl.placeholder = "Jumlah (" + satuan + ", bilangan bulat)";
+      }
     });
+
 
 
     // ==== Auto-capture scanner (global) untuk form Tambah Barang ====

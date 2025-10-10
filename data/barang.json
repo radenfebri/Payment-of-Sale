@@ -147,7 +147,7 @@
         "id": 1758442448,
         "kodeProduk": "TMY291390",
         "nama": "Gula Pasir",
-        "stok": 88,
+        "stok": 90,
         "stokMin": 10,
         "satuan": "kg",
         "satuanHarga": [
@@ -176,10 +176,10 @@
         ]
     },
     {
-        "id": 1758442450,
+        "id": "1758442450",
         "kodeProduk": "TMY291392",
         "nama": "Minyak Goreng 1L",
-        "stok": 71,
+        "stok": 81.9,
         "stokMin": 10,
         "satuan": "liter",
         "satuanHarga": [

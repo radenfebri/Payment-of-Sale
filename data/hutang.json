@@ -78,5 +78,25 @@
         "status": "belum lunas",
         "tanggal_bayar": null,
         "jumlah_awal": 14800
+    },
+    {
+        "id": "H1760063487",
+        "id_penjualan": 1760063487,
+        "nama": "Pelanggan1",
+        "jumlah": 9500,
+        "tanggal": "2025-10-10 09:31:27",
+        "status": "belum lunas",
+        "tanggal_bayar": null,
+        "jumlah_awal": 9500
+    },
+    {
+        "id": "H1760063746",
+        "id_penjualan": 1760063746,
+        "nama": "Pelanggan2",
+        "jumlah": 5700,
+        "tanggal": "2025-10-10 09:35:46",
+        "status": "belum lunas",
+        "tanggal_bayar": null,
+        "jumlah_awal": 5700
     }
 ]
